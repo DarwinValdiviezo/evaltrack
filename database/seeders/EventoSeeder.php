@@ -89,9 +89,6 @@ class EventoSeeder extends Seeder
             Evaluacion::create([
                 'evento_id' => $evento1->id,
                 'empleado_id' => $empleado->id,
-                'titulo' => 'Evaluación Power BI',
-                'descripcion' => 'Evaluación sobre los conceptos aprendidos en la capacitación de Power BI.',
-                'fecha_evaluacion' => $evento1->fecha_evento->addDays(1),
                 'status' => 'Pendiente',
                 'preguntas' => [
                     '¿Qué es Power BI y cuáles son sus principales características?',

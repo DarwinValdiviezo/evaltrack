@@ -26,13 +26,9 @@ class EvaluacionSeeder extends Seeder
                 Evaluacion::create([
                     'evento_id' => $evento->id,
                     'empleado_id' => $empleado->id,
-                    'titulo' => 'Evaluación: ' . $evento->titulo,
-                    'descripcion' => 'Evaluación del evento: ' . $evento->descripcion,
+                    'status' => 'Pendiente',
                     'nota' => null,
                     'respuestas' => null,
-                    'fecha_evaluacion' => $evento->fecha_evento,
-                    'status' => 'Pendiente',
-                    'evaluado_por' => null,
                     'preguntas' => [
                         '¿Qué te pareció el evento?',
                         '¿Aplicarías lo aprendido en tu trabajo?',
