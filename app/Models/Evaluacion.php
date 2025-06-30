@@ -6,25 +6,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Evaluacion extends Model
 {
-    protected $connection = 'mysql';
+    protected $connection = 'mysql_business';
     protected $table      = 'evaluaciones';
     protected $primaryKey = 'id';
 
     protected $fillable = [
         'evento_id',
         'empleado_id',
-        'titulo',
-        'descripcion',
-        'nota',
-        'respuestas',
-        'fecha_evaluacion',
         'status',
-        'evaluado_por',
+        'respuestas',
+        'nota',
+        'comentarios',
         'preguntas',
     ];
 
     protected $casts = [
-        'fecha_evaluacion' => 'date',
         'respuestas' => 'array',
         'preguntas' => 'array',
     ];

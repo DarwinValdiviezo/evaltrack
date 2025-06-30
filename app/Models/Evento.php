@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Evento extends Model
 {
+    protected $connection = 'mysql_business';
     protected $table = 'eventos';
 
     protected $fillable = [

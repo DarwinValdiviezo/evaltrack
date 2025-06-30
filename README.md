@@ -12,11 +12,11 @@ EvalTrack es un sistema integral de gestión de talento humano desarrollado en L
 
 - **Gestión de Usuarios y Roles**: Sistema de permisos granular con Spatie Laravel Permission
 - **Gestión de Empleados**: CRUD completo con perfiles detallados
-- **Gestión de Eventos**: Creación y administración de eventos corporativos
+- **Gestión de Eventos**: Creación, edición y seguimiento de eventos corporativos
 - **Control de Asistencias**: Registro y confirmación de asistencia a eventos
-- **Sistema de Evaluaciones**: Creación, respuesta y calificación de evaluaciones
+- **Sistema de Evaluaciones**: Evaluaciones post-evento con calificaciones
 - **Dashboard Personalizado**: Interfaz adaptada según el rol del usuario
-- **Arquitectura Híbrida**: PostgreSQL para usuarios/roles + MySQL para datos de negocio
+- **Arquitectura Híbrida**: PostgreSQL para usuarios/roles, MySQL para datos de negocio
 
 ## 🏗️ Arquitectura
 

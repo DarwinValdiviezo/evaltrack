@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Asistencia extends Model
 {
-    protected $connection = 'mysql';
+    protected $connection = 'mysql_business';
     protected $table      = 'asistencias';
 
     protected $fillable = [

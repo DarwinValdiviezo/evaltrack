@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Employee extends Model
 {
     // Datos principales en MySQL
-    protected $connection = 'mysql';
+    protected $connection = 'mysql_business';
     protected $table      = 'employees';
 
     protected $fillable = [

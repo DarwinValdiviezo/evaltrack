@@ -10,7 +10,7 @@ return new class extends Migration
      * Run the migrations.
      */
    public function up() {
-    Schema::create('employees', function(\Illuminate\Database\Schema\Blueprint $table){
+    Schema::connection('mysql_business')->create('employees', function(\Illuminate\Database\Schema\Blueprint $table){
         $table->id();
         $table->bigInteger('user_id')->unsigned();
         $table->string('nombre');
@@ -24,7 +24,7 @@ return new class extends Migration
     });
 }
 public function down() {
-    Schema::dropIfExists('employees');
+    Schema::connection('mysql_business')->dropIfExists('employees');
 }
 
 };

@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::connection('mysql')->table('asistencias', function (Blueprint $table) {
-            // $table->date('fecha_asistencia')->after('empleado_id');
-            // $table->time('hora_asistencia')->after('fecha_asistencia');
+        Schema::connection('mysql_business')->table('asistencias', function (Blueprint $table) {
+            $table->date('fecha_asistencia')->after('empleado_id');
+            $table->time('hora_asistencia')->after('fecha_asistencia');
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::connection('mysql')->table('asistencias', function (Blueprint $table) {
+        Schema::connection('mysql_business')->table('asistencias', function (Blueprint $table) {
             $table->dropColumn(['fecha_asistencia', 'hora_asistencia']);
         });
     }

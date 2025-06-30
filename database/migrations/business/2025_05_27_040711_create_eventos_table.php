@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('eventos', function (Blueprint $table) {
+        Schema::connection('mysql_business')->create('eventos', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
             $table->text('descripcion');
@@ -31,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('eventos');
+        Schema::connection('mysql_business')->dropIfExists('eventos');
     }
 };

@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('evaluaciones', function (Blueprint $table) {
-            //
+        Schema::connection('mysql_business')->table('evaluaciones', function (Blueprint $table) {
+            $table->json('preguntas')->after('status')->nullable();
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('evaluaciones', function (Blueprint $table) {
-            //
+        Schema::connection('mysql_business')->table('evaluaciones', function (Blueprint $table) {
+            $table->dropColumn('preguntas');
         });
     }
 };

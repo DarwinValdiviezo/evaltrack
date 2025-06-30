@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::connection('mysql')->table('evaluaciones', function (Blueprint $table) {
-            // $table->json('preguntas')->nullable()->after('evaluado_por');
+        Schema::connection('mysql_business')->table('employees', function (Blueprint $table) {
+            $table->enum('estado', ['activo', 'inactivo'])->default('activo')->after('cargo');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('evaluaciones', function (Blueprint $table) {
-            $table->dropColumn('preguntas');
+        Schema::connection('mysql_business')->table('employees', function (Blueprint $table) {
+            $table->dropColumn('estado');
         });
     }
 };
