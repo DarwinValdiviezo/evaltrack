@@ -70,6 +70,13 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
+    - name: Crear carpetas necesarias para Laravel
+      run: |
+        mkdir -p bootstrap/cache
+        mkdir -p storage/framework/{cache,sessions,views}
+        mkdir -p storage/logs
+        chmod -R 777 bootstrap/cache storage
+
     - name: Instalar dependencias PHP
       run: composer install --prefer-dist --no-progress
 
