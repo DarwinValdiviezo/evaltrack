@@ -33,7 +33,6 @@ class MigrateAll extends Command
             '--database' => 'pgsql',
             '--path' => 'database/migrations/users',
             '--force' => true,
-            '--fresh' => $this->option('fresh'),
         ]);
 
         // Migrate MySQL (business)
@@ -42,7 +41,6 @@ class MigrateAll extends Command
             '--database' => 'mysql_business',
             '--path' => 'database/migrations/business',
             '--force' => true,
-            '--fresh' => $this->option('fresh'),
         ]);
 
         // Seed if requested
