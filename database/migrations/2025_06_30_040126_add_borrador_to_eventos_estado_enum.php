@@ -1,8 +1,6 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -12,8 +10,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Modificar el enum para incluir 'Borrador'
-        DB::statement("ALTER TABLE eventos MODIFY COLUMN estado ENUM('Borrador', 'Programado', 'En Curso', 'Completado', 'Cancelado', 'Activo') DEFAULT 'Borrador'");
+        $driver = DB::getDriverName();
+        if ($driver === 'pgsql') {
+            // PostgreSQL: Agregar valor al tipo ENUM existente
+            DB::statement("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'eventos_estado_enum') THEN CREATE TYPE eventos_estado_enum AS ENUM ('Programado', 'En Curso', 'Completado', 'Cancelado', 'Activo'); END IF; END $$;");
+            DB::statement("ALTER TYPE eventos_estado_enum ADD VALUE IF NOT EXISTS 'Borrador';");
+        } else {
+            // MySQL: Modificar ENUM
+            DB::statement("ALTER TABLE eventos MODIFY COLUMN estado ENUM('Borrador', 'Programado', 'En Curso', 'Completado', 'Cancelado', 'Activo') DEFAULT 'Borrador'");
+        }
     }
 
     /**
@@ -21,7 +26,13 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Revertir el enum a su estado original
-        DB::statement("ALTER TABLE eventos MODIFY COLUMN estado ENUM('Programado', 'En Curso', 'Completado', 'Cancelado') DEFAULT 'Programado'");
+        $driver = DB::getDriverName();
+        if ($driver === 'pgsql') {
+            // PostgreSQL: No se puede eliminar un valor de ENUM, solo se puede recrear el tipo
+            // (opcional: dejarlo vacío o documentar)
+        } else {
+            // MySQL: Revertir el enum a su estado original
+            DB::statement("ALTER TABLE eventos MODIFY COLUMN estado ENUM('Programado', 'En Curso', 'Completado', 'Cancelado') DEFAULT 'Programado'");
+        }
     }
 };
