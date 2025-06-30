@@ -89,6 +89,23 @@ jobs:
     - name: Generar clave de aplicación
       run: php artisan key:generate
 
+    - name: Configurar variables de entorno para testing
+      run: |
+        echo "DB_CONNECTION=pgsql" >> .env.testing
+        echo "DB_PGSQL_HOST=127.0.0.1" >> .env.testing
+        echo "DB_PGSQL_PORT=5432" >> .env.testing
+        echo "DB_PGSQL_DATABASE=evaltrack_users_test" >> .env.testing
+        echo "DB_PGSQL_USERNAME=postgres" >> .env.testing
+        echo "DB_PGSQL_PASSWORD=password" >> .env.testing
+        echo "DB_HOST=127.0.0.1" >> .env.testing
+        echo "DB_PORT=3306" >> .env.testing
+        echo "DB_DATABASE=evaltrack_business_test" >> .env.testing
+        echo "DB_USERNAME=root" >> .env.testing
+        echo "DB_PASSWORD=root_password" >> .env.testing
+        echo "CACHE_DRIVER=file" >> .env.testing
+        echo "SESSION_DRIVER=file" >> .env.testing
+        echo "QUEUE_CONNECTION=sync" >> .env.testing
+
     - name: Configurar base de datos de prueba
       run: |
         php artisan config:cache
