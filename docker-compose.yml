@@ -1,0 +1,156 @@
+version: '3.8'
+
+services:
+  # Aplicación principal
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: evaltrack-app
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    environment:
+      - APP_ENV=local
+      - APP_DEBUG=true
+      - DB_CONNECTION=pgsql
+      - DB_PGSQL_HOST=postgres
+      - DB_PGSQL_PORT=5432
+      - DB_PGSQL_DATABASE=evaltrack_users
+      - DB_PGSQL_USERNAME=evaltrack_user
+      - DB_PGSQL_PASSWORD=password
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_DATABASE=evaltrack_business
+      - DB_USERNAME=evaltrack_user
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
+    depends_on:
+      - postgres
+      - mysql
+      - redis
+    networks:
+      - evaltrack-network
+
+  # Base de datos PostgreSQL (Usuarios y Roles)
+  postgres:
+    image: postgres:15-alpine
+    container_name: evaltrack-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: evaltrack_users
+      POSTGRES_USER: evaltrack_user
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - evaltrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evaltrack_user -d evaltrack_users"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Base de datos MySQL (Datos de negocio)
+  mysql:
+    image: mysql:8.0
+    container_name: evaltrack-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: evaltrack_business
+      MYSQL_USER: evaltrack_user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - evaltrack-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "evaltrack_user", "-ppassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para cache y sesiones
+  redis:
+    image: redis:7-alpine
+    container_name: evaltrack-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - evaltrack-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Nginx (opcional para desarrollo)
+  nginx:
+    image: nginx:alpine
+    container_name: evaltrack-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    networks:
+      - evaltrack-network
+
+  # MailHog para testing de emails
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: evaltrack-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    networks:
+      - evaltrack-network
+
+  # Adminer para gestión de base de datos
+  adminer:
+    image: adminer:latest
+    container_name: evaltrack-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: mysql
+    networks:
+      - evaltrack-network
+
+volumes:
+  postgres_data:
+    driver: local
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  evaltrack-network:
+    driver: bridge 

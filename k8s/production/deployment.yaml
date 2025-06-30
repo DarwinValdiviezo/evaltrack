@@ -1,0 +1,243 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evaltrack-web
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+    version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: evaltrack-web
+  template:
+    metadata:
+      labels:
+        app: evaltrack-web
+        version: "1.0.0"
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: evaltrack
+        image: company/evaltrack:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 443
+          name: https
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: APP_DEBUG
+          value: "false"
+        - name: APP_URL
+          value: "https://evaltrack.company.com"
+        - name: DB_CONNECTION
+          value: "pgsql"
+        - name: DB_PGSQL_HOST
+          value: "postgres-prod.company.com"
+        - name: DB_PGSQL_PORT
+          value: "5432"
+        - name: DB_PGSQL_DATABASE
+          value: "evaltrack_users"
+        - name: DB_PGSQL_USERNAME
+          value: "evaltrack_user"
+        - name: DB_PGSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: evaltrack-secrets
+              key: postgres-password
+        - name: DB_HOST
+          value: "mysql-prod.company.com"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_DATABASE
+          value: "evaltrack_business"
+        - name: DB_USERNAME
+          value: "evaltrack_user"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: evaltrack-secrets
+              key: mysql-password
+        - name: REDIS_HOST
+          value: "redis-prod.company.com"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: evaltrack-secrets
+              key: redis-password
+        - name: REDIS_PORT
+          value: "6379"
+        - name: CACHE_DRIVER
+          value: "redis"
+        - name: SESSION_DRIVER
+          value: "redis"
+        - name: QUEUE_CONNECTION
+          value: "redis"
+        - name: MAIL_MAILER
+          value: "smtp"
+        - name: MAIL_HOST
+          value: "smtp.company.com"
+        - name: MAIL_PORT
+          value: "587"
+        - name: MAIL_USERNAME
+          value: "noreply@company.com"
+        - name: MAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: evaltrack-secrets
+              key: mail-password
+        - name: MAIL_ENCRYPTION
+          value: "tls"
+        - name: MAIL_FROM_ADDRESS
+          value: "noreply@company.com"
+        - name: MAIL_FROM_NAME
+          value: "EvalTrack System"
+        - name: LOG_CHANNEL
+          value: "stack"
+        - name: LOG_LEVEL
+          value: "error"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        volumeMounts:
+        - name: storage
+          mountPath: /var/www/html/storage
+        - name: cache
+          mountPath: /var/www/html/bootstrap/cache
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: evaltrack-storage-pvc
+      - name: cache
+        emptyDir: {}
+      imagePullSecrets:
+      - name: docker-registry-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaltrack-web-service
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 443
+    protocol: TCP
+    name: https
+  selector:
+    app: evaltrack-web
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: evaltrack-ingress
+  namespace: evaltrack-prod
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+spec:
+  tls:
+  - hosts:
+    - evaltrack.company.com
+    secretName: evaltrack-tls
+  rules:
+  - host: evaltrack.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: evaltrack-web-service
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: evaltrack-storage-pvc
+  namespace: evaltrack-prod
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: fast-ssd
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: evaltrack-secrets
+  namespace: evaltrack-prod
+type: Opaque
+data:
+  postgres-password: <base64-encoded-password>
+  mysql-password: <base64-encoded-password>
+  redis-password: <base64-encoded-password>
+  mail-password: <base64-encoded-password>
+  app-key: <base64-encoded-app-key>
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: docker-registry-secret
+  namespace: evaltrack-prod
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: <base64-encoded-docker-config> 

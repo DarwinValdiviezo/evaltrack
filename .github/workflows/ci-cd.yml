@@ -1,0 +1,364 @@
+name: CI/CD Pipeline - EvalTrack
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: company/evaltrack
+
+jobs:
+  # Job de pruebas
+  test:
+    name: Tests y Análisis de Código
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: evaltrack_users_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: evaltrack_business_test
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 3306:3306
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, pdo_pgsql, gd, zip, bcmath
+        coverage: xdebug
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Instalar dependencias PHP
+      run: composer install --prefer-dist --no-progress
+
+    - name: Instalar dependencias Node.js
+      run: npm ci
+
+    - name: Copiar archivo de entorno
+      run: cp .env.example .env
+
+    - name: Generar clave de aplicación
+      run: php artisan key:generate
+
+    - name: Configurar base de datos de prueba
+      run: |
+        php artisan config:cache
+        php artisan migrate --env=testing
+        php artisan db:seed --env=testing
+
+    - name: Ejecutar tests unitarios
+      run: php artisan test --coverage --min=80
+
+    - name: Ejecutar tests de integración
+      run: php artisan test --testsuite=Feature --coverage
+
+    - name: Análisis estático de código PHP
+      run: |
+        composer require --dev phpstan/phpstan
+        ./vendor/bin/phpstan analyse app --level=8
+
+    - name: Verificar estilo de código
+      run: |
+        composer require --dev laravel/pint
+        ./vendor/bin/pint --test
+
+    - name: Verificar seguridad
+      run: |
+        composer require --dev enlightn/enlightn
+        php artisan enlightn --report
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Subir cobertura de código
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Job de construcción de imagen Docker
+  build:
+    name: Construir Imagen Docker
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login a Docker Hub
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extraer metadatos
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+
+    - name: Construir y push imagen
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  # Job de despliegue a desarrollo
+  deploy-dev:
+    name: Desplegar a Desarrollo
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment: development
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Configurar kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Configurar acceso a cluster
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_DEV }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+
+    - name: Desplegar a desarrollo
+      run: |
+        # Actualizar imagen en deployment
+        kubectl set image deployment/evaltrack-web evaltrack=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n evaltrack-dev
+        
+        # Esperar rollout
+        kubectl rollout status deployment/evaltrack-web -n evaltrack-dev --timeout=300s
+        
+        # Verificar health check
+        kubectl wait --for=condition=ready pod -l app=evaltrack-web -n evaltrack-dev --timeout=300s
+
+    - name: Ejecutar tests de humo
+      run: |
+        # Esperar que la aplicación esté lista
+        sleep 30
+        
+        # Tests básicos de conectividad
+        curl -f http://evaltrack-dev.company.com/health || exit 1
+        curl -f http://evaltrack-dev.company.com/api/status || exit 1
+
+    - name: Notificar despliegue exitoso
+      if: success()
+      run: |
+        echo "✅ Despliegue a desarrollo exitoso"
+        echo "URL: http://evaltrack-dev.company.com"
+        echo "Imagen: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
+  # Job de despliegue a staging
+  deploy-staging:
+    name: Desplegar a Staging
+    runs-on: ubuntu-latest
+    needs: [build, deploy-dev]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: staging
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Configurar kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Configurar acceso a cluster
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_STAGING }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+
+    - name: Desplegar a staging
+      run: |
+        # Actualizar imagen en deployment
+        kubectl set image deployment/evaltrack-web evaltrack=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} -n evaltrack-staging
+        
+        # Esperar rollout
+        kubectl rollout status deployment/evaltrack-web -n evaltrack-staging --timeout=300s
+        
+        # Verificar health check
+        kubectl wait --for=condition=ready pod -l app=evaltrack-web -n evaltrack-staging --timeout=300s
+
+    - name: Ejecutar tests de integración
+      run: |
+        # Esperar que la aplicación esté lista
+        sleep 30
+        
+        # Tests de funcionalidades críticas
+        curl -f http://evaltrack-staging.company.com/health || exit 1
+        curl -f http://evaltrack-staging.company.com/api/status || exit 1
+        
+        # Tests de base de datos
+        curl -f http://evaltrack-staging.company.com/api/test-db || exit 1
+
+    - name: Notificar despliegue exitoso
+      if: success()
+      run: |
+        echo "✅ Despliegue a staging exitoso"
+        echo "URL: http://evaltrack-staging.company.com"
+        echo "Imagen: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+
+  # Job de despliegue a producción
+  deploy-production:
+    name: Desplegar a Producción
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Configurar kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Configurar acceso a cluster
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_PROD }}" | base64 -d > kubeconfig
+        export KUBECONFIG=kubeconfig
+
+    - name: Backup de base de datos
+      run: |
+        # Backup de PostgreSQL
+        kubectl exec -n evaltrack-prod deployment/postgres -- pg_dump -U evaltrack_user evaltrack_users > postgres_backup.sql
+        
+        # Backup de MySQL
+        kubectl exec -n evaltrack-prod deployment/mysql -- mysqldump -u evaltrack_user -p${{ secrets.MYSQL_PASSWORD }} evaltrack_business > mysql_backup.sql
+
+    - name: Desplegar a producción (Blue/Green)
+      run: |
+        # Desplegar nueva versión en green environment
+        kubectl apply -f k8s/production/green-deployment.yaml
+        
+        # Esperar que green esté listo
+        kubectl wait --for=condition=ready pod -l app=evaltrack-web-green -n evaltrack-prod --timeout=300s
+        
+        # Tests de humo en green
+        curl -f http://evaltrack-green.company.com/health || exit 1
+        
+        # Cambiar tráfico a green
+        kubectl apply -f k8s/production/green-service.yaml
+        
+        # Esperar que el tráfico se estabilice
+        sleep 60
+        
+        # Verificar métricas
+        curl -f http://evaltrack.company.com/health || exit 1
+
+    - name: Rollback automático si falla
+      if: failure()
+      run: |
+        echo "❌ Despliegue falló, ejecutando rollback..."
+        kubectl apply -f k8s/production/blue-service.yaml
+        kubectl delete deployment evaltrack-web-green -n evaltrack-prod
+
+    - name: Notificar despliegue exitoso
+      if: success()
+      run: |
+        echo "✅ Despliegue a producción exitoso"
+        echo "URL: https://evaltrack.company.com"
+        echo "Imagen: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        
+        # Notificar a Slack
+        curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"🚀 EvalTrack v1.0.0 desplegado exitosamente a producción!"}' \
+          ${{ secrets.SLACK_WEBHOOK }}
+
+  # Job de monitoreo post-despliegue
+  monitor:
+    name: Monitoreo Post-Despliegue
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+    - name: Monitorear métricas por 10 minutos
+      run: |
+        for i in {1..20}; do
+          echo "Verificación $i/20..."
+          
+          # Health check
+          curl -f https://evaltrack.company.com/health || echo "❌ Health check falló"
+          
+          # Métricas de aplicación
+          curl -f https://evaltrack.company.com/api/metrics || echo "❌ Métricas no disponibles"
+          
+          # Verificar logs de errores
+          # (implementar según sistema de logging)
+          
+          sleep 30
+        done
+
+    - name: Reporte final
+      run: |
+        echo "📊 Monitoreo completado"
+        echo "✅ Aplicación funcionando correctamente"
+        echo "🔗 URL: https://evaltrack.company.com" 

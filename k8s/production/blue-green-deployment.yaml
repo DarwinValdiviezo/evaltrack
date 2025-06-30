@@ -1,0 +1,210 @@
+# Blue/Green Deployment Strategy para EvalTrack
+# Este archivo contiene las configuraciones para ambos ambientes
+
+---
+# Blue Environment (Versión actual en producción)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evaltrack-web-blue
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+    environment: blue
+    version: "1.0.0"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: evaltrack-web
+      environment: blue
+  template:
+    metadata:
+      labels:
+        app: evaltrack-web
+        environment: blue
+        version: "1.0.0"
+    spec:
+      containers:
+      - name: evaltrack
+        image: company/evaltrack:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: APP_URL
+          value: "https://evaltrack.company.com"
+        # ... resto de variables de entorno igual que deployment.yaml
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+# Green Environment (Nueva versión a desplegar)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evaltrack-web-green
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+    environment: green
+    version: "1.1.0"
+spec:
+  replicas: 0  # Inicialmente sin réplicas
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: evaltrack-web
+      environment: green
+  template:
+    metadata:
+      labels:
+        app: evaltrack-web
+        environment: green
+        version: "1.1.0"
+    spec:
+      containers:
+      - name: evaltrack
+        image: company/evaltrack:1.1.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: APP_URL
+          value: "https://evaltrack.company.com"
+        # ... resto de variables de entorno igual que deployment.yaml
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+# Service para Blue Environment
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaltrack-web-blue-service
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+    environment: blue
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: evaltrack-web
+    environment: blue
+---
+# Service para Green Environment
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaltrack-web-green-service
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+    environment: green
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: evaltrack-web
+    environment: green
+---
+# Service principal que apunta a Blue por defecto
+apiVersion: v1
+kind: Service
+metadata:
+  name: evaltrack-web-service
+  namespace: evaltrack-prod
+  labels:
+    app: evaltrack-web
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: evaltrack-web
+    environment: blue  # Por defecto apunta a blue
+---
+# Ingress principal
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: evaltrack-ingress
+  namespace: evaltrack-prod
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - evaltrack.company.com
+    secretName: evaltrack-tls
+  rules:
+  - host: evaltrack.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: evaltrack-web-service
+            port:
+              number: 80 
