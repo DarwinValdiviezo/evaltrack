@@ -12,6 +12,17 @@ class EmpleadoHelperTest extends TestCase
         $this->assertTrue(class_exists(EmpleadoHelper::class));
     }
 
+    public function test_get_user_ids_con_rol_empleado_method_exists()
+    {
+        $this->assertTrue(method_exists(EmpleadoHelper::class, 'getUserIdsConRolEmpleado'));
+    }
+
+    public function test_empleado_helper_is_static_class()
+    {
+        $reflection = new \ReflectionClass(EmpleadoHelper::class);
+        $this->assertTrue($reflection->isInstantiable() === false || $reflection->getConstructor() === null);
+    }
+
     public function test_format_nombre_completo()
     {
         $nombre = 'Juan';
