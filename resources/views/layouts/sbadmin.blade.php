@@ -49,98 +49,100 @@
                 <div class="sidebar-brand-text mx-3">EvalTrack</div>
             </a>
             <hr class="sidebar-divider my-0">
-            <li class="nav-item @if(request()->is('home')) active @endif">
-                <a class="nav-link" href="{{ route('home') }}">
-                    <i class="fas fa-fw fa-home"></i>
-                    <span>Inicio</span></a>
-            </li>
-            @if(Auth::user()->hasRole('Administrador'))
-                <li class="nav-item @if(request()->is('users*')) active @endif">
-                    <a class="nav-link" href="{{ route('users.index') }}">
-                        <i class="fas fa-fw fa-users"></i>
-                        <span>Usuarios</span></a>
+            @if(auth()->check())
+                <li class="nav-item @if(request()->is('home')) active @endif">
+                    <a class="nav-link" href="{{ route('home') }}">
+                        <i class="fas fa-fw fa-home"></i>
+                        <span>Inicio</span></a>
                 </li>
-                <li class="nav-item @if(request()->is('roles*')) active @endif">
-                    <a class="nav-link" href="{{ route('roles.index') }}">
-                        <i class="fas fa-fw fa-user-shield"></i>
-                        <span>Roles</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('empleados*')) active @endif">
-                    <a class="nav-link" href="{{ route('empleados.index') }}">
-                        <i class="fas fa-fw fa-id-badge"></i>
-                        <span>Empleados</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('eventos*')) active @endif">
-                    <a class="nav-link" href="{{ route('eventos.index') }}">
-                        <i class="fas fa-fw fa-calendar-alt"></i>
-                        <span>Eventos</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('asistencias*')) active @endif">
-                    <a class="nav-link" href="{{ route('asistencias.index') }}">
-                        <i class="fas fa-fw fa-clipboard-check"></i>
-                        <span>Asistencias</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('evaluaciones*')) active @endif">
-                    <a class="nav-link" href="{{ route('evaluaciones.index') }}">
-                        <i class="fas fa-fw fa-clipboard-list"></i>
-                        <span>Evaluaciones</span></a>
-                </li>
-            @elseif(Auth::user()->hasRole('Gestor de Talento Humano'))
-                <li class="nav-item @if(request()->is('empleados*')) active @endif">
-                    <a class="nav-link" href="{{ route('empleados.index') }}">
-                        <i class="fas fa-fw fa-id-badge"></i>
-                        <span>Empleados</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('eventos*')) active @endif">
-                    <a class="nav-link" href="{{ route('eventos.index') }}">
-                        <i class="fas fa-fw fa-calendar-alt"></i>
-                        <span>Eventos</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('asistencias*')) active @endif">
-                    <a class="nav-link" href="{{ route('asistencias.index') }}">
-                        <i class="fas fa-fw fa-clipboard-check"></i>
-                        <span>Asistencias</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('evaluaciones*')) active @endif">
-                    <a class="nav-link" href="{{ route('evaluaciones.index') }}">
-                        <i class="fas fa-fw fa-clipboard-list"></i>
-                        <span>Evaluaciones</span></a>
-                </li>
-            @elseif(Auth::user()->hasRole('Empleado'))
-                <li class="nav-item @if(request()->is('empleados/mi-perfil')) active @endif">
-                    <a class="nav-link" href="{{ route('empleados.mi-perfil') }}">
-                        <i class="fas fa-fw fa-user"></i>
-                        <span>Mi Perfil</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('mis-asistencias')) active @endif">
-                    <a class="nav-link" href="{{ route('mis-asistencias') }}">
-                        <i class="fas fa-fw fa-calendar-check"></i>
-                        <span>Mis Asistencias</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('mis-evaluaciones')) active @endif">
-                    <a class="nav-link" href="{{ route('mis-evaluaciones') }}">
-                        <i class="fas fa-fw fa-clipboard-list"></i>
-                        <span>Mis Evaluaciones</span></a>
-                </li>
-                <li class="nav-item @if(request()->is('eventos*')) active @endif">
-                    <a class="nav-link" href="{{ route('eventos.index') }}">
-                        <i class="fas fa-fw fa-calendar-alt"></i>
-                        <span>Eventos</span></a>
+                @if(auth()->user()->hasRole('Administrador'))
+                    <li class="nav-item @if(request()->is('users*')) active @endif">
+                        <a class="nav-link" href="{{ route('users.index') }}">
+                            <i class="fas fa-fw fa-users"></i>
+                            <span>Usuarios</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('roles*')) active @endif">
+                        <a class="nav-link" href="{{ route('roles.index') }}">
+                            <i class="fas fa-fw fa-user-shield"></i>
+                            <span>Roles</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('empleados*')) active @endif">
+                        <a class="nav-link" href="{{ route('empleados.index') }}">
+                            <i class="fas fa-fw fa-id-badge"></i>
+                            <span>Empleados</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('eventos*')) active @endif">
+                        <a class="nav-link" href="{{ route('eventos.index') }}">
+                            <i class="fas fa-fw fa-calendar-alt"></i>
+                            <span>Eventos</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('asistencias*')) active @endif">
+                        <a class="nav-link" href="{{ route('asistencias.index') }}">
+                            <i class="fas fa-fw fa-clipboard-check"></i>
+                            <span>Asistencias</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('evaluaciones*')) active @endif">
+                        <a class="nav-link" href="{{ route('evaluaciones.index') }}">
+                            <i class="fas fa-fw fa-clipboard-list"></i>
+                            <span>Evaluaciones</span></a>
+                    </li>
+                @elseif(auth()->user()->hasRole('Gestor de Talento Humano'))
+                    <li class="nav-item @if(request()->is('empleados*')) active @endif">
+                        <a class="nav-link" href="{{ route('empleados.index') }}">
+                            <i class="fas fa-fw fa-id-badge"></i>
+                            <span>Empleados</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('eventos*')) active @endif">
+                        <a class="nav-link" href="{{ route('eventos.index') }}">
+                            <i class="fas fa-fw fa-calendar-alt"></i>
+                            <span>Eventos</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('asistencias*')) active @endif">
+                        <a class="nav-link" href="{{ route('asistencias.index') }}">
+                            <i class="fas fa-fw fa-clipboard-check"></i>
+                            <span>Asistencias</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('evaluaciones*')) active @endif">
+                        <a class="nav-link" href="{{ route('evaluaciones.index') }}">
+                            <i class="fas fa-fw fa-clipboard-list"></i>
+                            <span>Evaluaciones</span></a>
+                    </li>
+                @elseif(auth()->user()->hasRole('Empleado'))
+                    <li class="nav-item @if(request()->is('empleados/mi-perfil')) active @endif">
+                        <a class="nav-link" href="{{ route('empleados.mi-perfil') }}">
+                            <i class="fas fa-fw fa-user"></i>
+                            <span>Mi Perfil</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('mis-asistencias')) active @endif">
+                        <a class="nav-link" href="{{ route('mis-asistencias') }}">
+                            <i class="fas fa-fw fa-calendar-check"></i>
+                            <span>Mis Asistencias</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('mis-evaluaciones')) active @endif">
+                        <a class="nav-link" href="{{ route('mis-evaluaciones') }}">
+                            <i class="fas fa-fw fa-clipboard-list"></i>
+                            <span>Mis Evaluaciones</span></a>
+                    </li>
+                    <li class="nav-item @if(request()->is('eventos*')) active @endif">
+                        <a class="nav-link" href="{{ route('eventos.index') }}">
+                            <i class="fas fa-fw fa-calendar-alt"></i>
+                            <span>Eventos</span></a>
+                    </li>
+                @endif
+                <hr class="sidebar-divider d-none d-md-block">
+                <div class="sidebar-footer text-center mb-2">
+                    <small>{{ auth()->user()->email }}</small>
+                </div>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ route('logout') }}"
+                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Cerrar sesión</span></a>
+                    <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
+                        @csrf
+                    </form>
                 </li>
             @endif
-            <hr class="sidebar-divider d-none d-md-block">
-            <div class="sidebar-footer text-center mb-2">
-                <small>{{ Auth::user()->email }}</small>
-            </div>
-            <li class="nav-item">
-                <a class="nav-link" href="{{ route('logout') }}"
-                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Cerrar sesión</span></a>
-                <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
-                    @csrf
-                </form>
-            </li>
         </ul>
         <!-- End of Sidebar -->
         <!-- Content Wrapper -->
@@ -153,26 +155,28 @@
                         <i class="fa fa-bars"></i>
                     </button>
                     <span class="h5 mb-0 text-gray-800">@yield('title', 'Dashboard')</span>
-                    <ul class="navbar-nav ml-auto">
-                        <li class="nav-item dropdown no-arrow">
-                            <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ Auth::user()->username }}</span>
-                                <img class="img-profile rounded-circle" src="https://ui-avatars.com/api/?name={{ urlencode(Auth::user()->username) }}&background=2563eb&color=fff">
-                            </a>
-                            <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
-                                <a class="dropdown-item" href="{{ route('empleados.mi-perfil') }}">
-                                    <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Mi Perfil
+                    @if(auth()->check())
+                        <ul class="navbar-nav ml-auto">
+                            <li class="nav-item dropdown no-arrow">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ auth()->user()->username }}</span>
+                                    <img class="img-profile rounded-circle" src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->username) }}&background=2563eb&color=fff">
                                 </a>
-                                <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="{{ route('logout') }}"
-                                   onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                    <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
-                                    Cerrar sesión
-                                </a>
-                            </div>
-                        </li>
-                    </ul>
+                                <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
+                                    <a class="dropdown-item" href="{{ route('empleados.mi-perfil') }}">
+                                        <i class="fas fa-user fa-sm fa-fw mr-2 text-gray-400"></i>
+                                        Mi Perfil
+                                    </a>
+                                    <div class="dropdown-divider"></div>
+                                    <a class="dropdown-item" href="{{ route('logout') }}"
+                                       onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                        <i class="fas fa-sign-out-alt fa-sm fa-fw mr-2 text-gray-400"></i>
+                                        Cerrar sesión
+                                    </a>
+                                </div>
+                            </li>
+                        </ul>
+                    @endif
                 </nav>
                 <!-- End of Topbar -->
                 <div class="container-fluid">

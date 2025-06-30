@@ -8,6 +8,8 @@ use App\Models\Role;
 use App\Http\Middleware\CheckRole;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use ReflectionClass;
+use ReflectionMethod;
 
 class CheckRoleTest extends TestCase
 {
@@ -32,13 +34,13 @@ class CheckRoleTest extends TestCase
 
     public function test_check_role_middleware_handle_method_signature()
     {
-        $middleware = new CheckRole();
-        $reflection = new \ReflectionMethod($middleware, 'handle');
-        $parameters = $reflection->getParameters();
+        $reflection = new ReflectionClass(CheckRole::class);
+        $method = $reflection->getMethod('handle');
+        $parameters = $method->getParameters();
         
         $this->assertCount(3, $parameters);
         $this->assertEquals('request', $parameters[0]->getName());
         $this->assertEquals('next', $parameters[1]->getName());
-        $this->assertEquals('role', $parameters[2]->getName());
+        $this->assertEquals('roles', $parameters[2]->getName());
     }
 } 
