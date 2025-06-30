@@ -13,8 +13,12 @@ class MigrateAllTest extends TestCase
 
     public function test_migrate_all_command_has_signature()
     {
+        $reflection = new \ReflectionClass(\App\Console\Commands\MigrateAll::class);
+        $property = $reflection->getProperty('signature');
+        $property->setAccessible(true);
         $command = new \App\Console\Commands\MigrateAll();
-        $this->assertStringContainsString('migrate:all', $command->getSignature());
+        $signature = $property->getValue($command);
+        $this->assertStringContainsString('migrate:all', $signature);
     }
 
     public function test_migrate_all_command_has_description()
