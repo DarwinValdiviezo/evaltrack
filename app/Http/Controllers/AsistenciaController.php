@@ -200,9 +200,4 @@ class AsistenciaController extends Controller
         
         return view('asistencias.registrar', compact('eventos'));
     }
-
-    public function show(Asistencia $asistencia)
-    {
-        return view('asistencias.show', compact('asistencia'));
-    }
 }
