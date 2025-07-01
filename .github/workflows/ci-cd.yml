@@ -107,9 +107,11 @@ jobs:
         export SESSION_DRIVER=file
         export QUEUE_CONNECTION=sync
         php artisan config:cache --env=testing
-        echo "Migrando base de datos PostgreSQL (users)..."
+        echo "Migrando base de datos de usuarios (PostgreSQL)..."
+        php artisan migrate --database=pgsql --path=database/migrations/users --env=testing --force
         php artisan migrate --database=pgsql --env=testing --force
-        echo "Migrando base de datos MySQL (business)..."
+        echo "Migrando base de datos de negocio (MySQL)..."
+        php artisan migrate --database=mysql --path=database/migrations/business --env=testing --force
         php artisan migrate --database=mysql --env=testing --force
         echo "Listo. Estado de migraciones:"
         php artisan migrate:status --database=pgsql --env=testing
