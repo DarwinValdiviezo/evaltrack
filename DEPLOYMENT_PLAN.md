@@ -241,10 +241,10 @@ flowchart TD
     S4 -.-> U2
 
     %% Notas visuales
-    classDef qa fill:#E0EAFF,stroke:#333,stroke-width:1px;
-    classDef devops fill:#FFF5D4,stroke:#333,stroke-width:1px;
-    classDef soporte fill:#FFD4D4,stroke:#333,stroke-width:1px;
-    classDef usuario fill:#D4FFD4,stroke:#333,stroke-width:1px;
+    classDef qa fill:
+    classDef devops fill:
+    classDef soporte fill:
+    classDef usuario fill:
     class QA1,QA2 qa;
     class D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12 devops;
     class S1,S2,S3,S4 soporte;
