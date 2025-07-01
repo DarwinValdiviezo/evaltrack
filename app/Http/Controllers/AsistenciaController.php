@@ -49,6 +49,11 @@ class AsistenciaController extends Controller
                          ->with('success','Asistencia registrada correctamente.');
     }
 
+    public function show(Asistencia $asistencia)
+    {
+        return view('asistencias.show', compact('asistencia'));
+    }
+
     public function edit(Asistencia $asistencia)
     {
         $empleados = Employee::all();
@@ -194,5 +199,10 @@ class AsistenciaController extends Controller
                                     ->get();
         
         return view('asistencias.registrar', compact('eventos'));
+    }
+
+    public function show(Asistencia $asistencia)
+    {
+        return view('asistencias.show', compact('asistencia'));
     }
 }

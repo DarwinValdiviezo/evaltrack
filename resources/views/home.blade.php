@@ -9,25 +9,25 @@
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">Bienvenido</h4>
                 </div>
-                <div class="card-body">
+            <div class="card-body">
                     <p class="lead mb-4">
                         ¡Bienvenido al sistema de gestión de talento humano!
                     </p>
                     @if(auth()->check() && auth()->user()->hasRole('Administrador'))
                         <div class="alert alert-info">
                             Eres administrador.
-                        </div>
+                    </div>
                     @endif
                     @if(auth()->check() && auth()->user()->hasRole('Gestor de Talento Humano'))
                         <div class="alert alert-success">
                             Eres gestor de talento humano.
-                        </div>
+                    </div>
                     @endif
                     @if(auth()->check() && auth()->user()->hasRole('Empleado'))
                         <div class="alert alert-warning">
                             Eres empleado.
-                        </div>
-                    @endif
+                                </div>
+                @endif
                 </div>
             </div>
         </div>

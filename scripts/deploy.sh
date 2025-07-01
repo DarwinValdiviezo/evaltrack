@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# Script de Despliegue Automatizado para EvalTrack
-# Versión: 1.0.0
-# Uso: ./scripts/deploy.sh [environment] [version]
+# Script de despliegue para EvalTrack
+# Uso: ./scripts/deploy.sh [environment]
 
 set -e
 
@@ -13,264 +12,233 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Variables por defecto
-ENVIRONMENT=${1:-production}
-VERSION=${2:-latest}
-DOCKER_REGISTRY="company"
-IMAGE_NAME="evaltrack"
-FULL_IMAGE_NAME="$DOCKER_REGISTRY/$IMAGE_NAME:$VERSION"
-
 # Función para logging
 log() {
     echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1"
 }
 
+error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+    exit 1
+}
+
 success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
 warning() {
-    echo -e "${YELLOW}⚠️ $1${NC}"
+    echo -e "${YELLOW}[WARNING]${NC} $1"
 }
 
-error() {
-    echo -e "${RED}❌ $1${NC}"
-}
+# Variables
+ENVIRONMENT=${1:-local}
+PROJECT_NAME="evaltrack"
+DOCKER_IMAGE="company/evaltrack:latest"
 
-# Función para verificar prerequisitos
-check_prerequisites() {
-    log "Verificando prerequisitos..."
-    
-    # Verificar Docker
-    if ! command -v docker &> /dev/null; then
-        error "Docker no está instalado"
-        exit 1
-    fi
-    
-    # Verificar kubectl
-    if ! command -v kubectl &> /dev/null; then
-        error "kubectl no está instalado"
-        exit 1
-    fi
-    
-    # Verificar conexión al cluster
-    if ! kubectl cluster-info &> /dev/null; then
-        error "No se puede conectar al cluster de Kubernetes"
-        exit 1
-    fi
-    
-    success "Prerequisitos verificados"
-}
+# Verificar que estamos en el directorio correcto
+if [ ! -f "artisan" ]; then
+    error "No se encontró el archivo artisan. Ejecuta este script desde la raíz del proyecto."
+fi
+
+log "🚀 Iniciando despliegue de EvalTrack en entorno: $ENVIRONMENT"
 
 # Función para backup de base de datos
 backup_database() {
-    log "Creando backup de base de datos..."
+    log "📦 Creando backup de base de datos..."
     
-    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-    BACKUP_DIR="/backups/evaltrack_${ENVIRONMENT}_${TIMESTAMP}"
-    
-    mkdir -p "$BACKUP_DIR"
-    
-    # Backup PostgreSQL
-    if kubectl get pods -n evaltrack-$ENVIRONMENT -l app=postgres &> /dev/null; then
-        log "Backup de PostgreSQL..."
-        kubectl exec -n evaltrack-$ENVIRONMENT deployment/postgres -- \
-            pg_dump -U evaltrack_user evaltrack_users > "$BACKUP_DIR/postgres_backup.sql"
-        success "Backup de PostgreSQL completado"
-    fi
-    
-    # Backup MySQL
-    if kubectl get pods -n evaltrack-$ENVIRONMENT -l app=mysql &> /dev/null; then
-        log "Backup de MySQL..."
-        kubectl exec -n evaltrack-$ENVIRONMENT deployment/mysql -- \
-            mysqldump -u evaltrack_user -p$MYSQL_PASSWORD evaltrack_business > "$BACKUP_DIR/mysql_backup.sql"
-        success "Backup de MySQL completado"
-    fi
-    
-    log "Backup guardado en: $BACKUP_DIR"
-}
-
-# Función para verificar health check
-health_check() {
-    local url=$1
-    local max_attempts=30
-    local attempt=1
-    
-    log "Verificando health check en $url..."
-    
-    while [ $attempt -le $max_attempts ]; do
-        if curl -f -s "$url/health" > /dev/null; then
-            success "Health check exitoso"
-            return 0
+    if [ "$ENVIRONMENT" = "production" ]; then
+        # Backup PostgreSQL
+        if command -v pg_dump &> /dev/null; then
+            pg_dump -h localhost -U evaltrack_user evaltrack_users > "backup/postgres_$(date +%Y%m%d_%H%M%S).sql"
+            success "Backup PostgreSQL creado"
         fi
         
-        log "Intento $attempt/$max_attempts - Health check falló..."
-        sleep 10
-        attempt=$((attempt + 1))
-    done
-    
-    error "Health check falló después de $max_attempts intentos"
-    return 1
-}
-
-# Función para rollback
-rollback() {
-    error "Ejecutando rollback..."
-    
-    case $ENVIRONMENT in
-        "production")
-            # Rollback Blue/Green
-            kubectl patch service evaltrack-web-service -n evaltrack-prod \
-                -p '{"spec":{"selector":{"environment":"blue"}}}'
-            kubectl scale deployment evaltrack-web-green -n evaltrack-prod --replicas=0
-            success "Rollback completado - Tráfico redirigido a Blue"
-            ;;
-        *)
-            # Rollback normal
-            kubectl rollout undo deployment/evaltrack-web -n evaltrack-$ENVIRONMENT
-            kubectl rollout status deployment/evaltrack-web -n evaltrack-$ENVIRONMENT --timeout=300s
-            success "Rollback completado"
-            ;;
-    esac
-}
-
-# Función para despliegue Blue/Green
-blue_green_deploy() {
-    log "Iniciando despliegue Blue/Green..."
-    
-    # Escalar Green a 3 réplicas
-    kubectl scale deployment evaltrack-web-green -n evaltrack-prod --replicas=3
-    
-    # Esperar que Green esté listo
-    kubectl rollout status deployment/evaltrack-web-green -n evaltrack-prod --timeout=300s
-    
-    # Health check en Green
-    if ! health_check "http://evaltrack-green.company.com"; then
-        error "Health check falló en Green environment"
-        kubectl scale deployment evaltrack-web-green -n evaltrack-prod --replicas=0
-        exit 1
-    fi
-    
-    # Cambiar tráfico a Green
-    kubectl patch service evaltrack-web-service -n evaltrack-prod \
-        -p '{"spec":{"selector":{"environment":"green"}}}'
-    
-    # Esperar que el tráfico se estabilice
-    sleep 30
-    
-    # Health check en producción
-    if ! health_check "https://evaltrack.company.com"; then
-        error "Health check falló en producción después del switch"
-        rollback
-        exit 1
-    fi
-    
-    # Escalar Blue a 0 réplicas
-    kubectl scale deployment evaltrack-web-blue -n evaltrack-prod --replicas=0
-    
-    success "Despliegue Blue/Green completado exitosamente"
-}
-
-# Función para despliegue normal
-normal_deploy() {
-    log "Iniciando despliegue normal..."
-    
-    # Actualizar imagen
-    kubectl set image deployment/evaltrack-web evaltrack=$FULL_IMAGE_NAME -n evaltrack-$ENVIRONMENT
-    
-    # Esperar rollout
-    kubectl rollout status deployment/evaltrack-web -n evaltrack-$ENVIRONMENT --timeout=300s
-    
-    # Health check
-    local url
-    case $ENVIRONMENT in
-        "development")
-            url="http://evaltrack-dev.company.com"
-            ;;
-        "staging")
-            url="http://evaltrack-staging.company.com"
-            ;;
-        *)
-            url="https://evaltrack.company.com"
-            ;;
-    esac
-    
-    if ! health_check "$url"; then
-        error "Health check falló"
-        rollback
-        exit 1
-    fi
-    
-    success "Despliegue normal completado exitosamente"
-}
-
-# Función para notificar
-notify() {
-    local status=$1
-    local message=$2
-    
-    # Notificar a Slack
-    if [ -n "$SLACK_WEBHOOK" ]; then
-        curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"🚀 EvalTrack v$VERSION - $status: $message\"}" \
-            "$SLACK_WEBHOOK"
-    fi
-    
-    # Notificar por email
-    if [ -n "$EMAIL_RECIPIENTS" ]; then
-        echo "EvalTrack v$VERSION - $status: $message" | \
-            mail -s "Despliegue EvalTrack $ENVIRONMENT" $EMAIL_RECIPIENTS
+        # Backup MySQL
+        if command -v mysqldump &> /dev/null; then
+            mysqldump -h localhost -u evaltrack_user -p evaltrack_business > "backup/mysql_$(date +%Y%m%d_%H%M%S).sql"
+            success "Backup MySQL creado"
+        fi
     fi
 }
 
-# Función principal
-main() {
-    echo "=========================================="
-    echo "   EvalTrack v$VERSION - Despliegue"
-    echo "   Entorno: $ENVIRONMENT"
-    echo "=========================================="
+# Función para instalar dependencias
+install_dependencies() {
+    log "📦 Instalando dependencias..."
     
-    # Verificar prerequisitos
-    check_prerequisites
-    
-    # Verificar que la imagen existe
-    log "Verificando imagen Docker: $FULL_IMAGE_NAME"
-    if ! docker pull $FULL_IMAGE_NAME &> /dev/null; then
-        error "No se puede descargar la imagen $FULL_IMAGE_NAME"
-        exit 1
+    # Instalar dependencias PHP
+    if [ -f "composer.json" ]; then
+        composer install --no-dev --optimize-autoloader
+        success "Dependencias PHP instaladas"
     fi
-    success "Imagen verificada"
     
-    # Backup de base de datos
+    # Instalar dependencias Node.js
+    if [ -f "package.json" ]; then
+        npm ci --production
+        success "Dependencias Node.js instaladas"
+    fi
+}
+
+# Función para configurar entorno
+setup_environment() {
+    log "⚙️ Configurando entorno..."
+    
+    # Copiar archivo de entorno si no existe
+    if [ ! -f ".env" ]; then
+        cp .env.example .env
+        warning "Archivo .env creado desde .env.example. Revisa la configuración."
+    fi
+    
+    # Generar clave de aplicación
+    php artisan key:generate --force
+    
+    # Limpiar caché
+    php artisan config:clear
+    php artisan cache:clear
+    php artisan view:clear
+    php artisan route:clear
+    
+    success "Entorno configurado"
+}
+
+# Función para migrar base de datos
+migrate_database() {
+    log "🗄️ Ejecutando migraciones..."
+    
+    # Migrar base de datos de usuarios (PostgreSQL)
+    php artisan migrate --database=pgsql --path=database/migrations/users --force
+    
+    # Migrar base de datos de negocio (MySQL)
+    php artisan migrate --database=mysql_business --path=database/migrations/business --force
+    
+    success "Migraciones completadas"
+}
+
+# Función para ejecutar seeders
+run_seeders() {
+    log "🌱 Ejecutando seeders..."
+    
+    if [ "$ENVIRONMENT" = "local" ] || [ "$ENVIRONMENT" = "development" ]; then
+        php artisan db:seed --force
+        success "Seeders ejecutados"
+    else
+        warning "Saltando seeders en entorno $ENVIRONMENT"
+    fi
+}
+
+# Función para optimizar aplicación
+optimize_application() {
+    log "⚡ Optimizando aplicación..."
+    
+    # Compilar assets
+    npm run build
+    
+    # Optimizar configuración
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    
+    # Optimizar autoloader
+    composer dump-autoload --optimize
+    
+    success "Aplicación optimizada"
+}
+
+# Función para verificar permisos
+check_permissions() {
+    log "🔐 Verificando permisos..."
+    
+    # Crear directorios necesarios
+    mkdir -p bootstrap/cache
+    mkdir -p storage/framework/{cache,sessions,views}
+    mkdir -p storage/logs
+    mkdir -p backup
+    
+    # Establecer permisos
+    chmod -R 775 storage
+    chmod -R 775 bootstrap/cache
+    
+    success "Permisos configurados"
+}
+
+# Función para health check
+health_check() {
+    log "🏥 Ejecutando health check..."
+    
+    # Verificar que la aplicación responde
+    if curl -f http://localhost/health > /dev/null 2>&1; then
+        success "Health check exitoso"
+    else
+        warning "Health check falló - verifica que el servidor esté ejecutándose"
+    fi
+}
+
+# Función para despliegue con Docker
+deploy_docker() {
+    log "🐳 Desplegando con Docker..."
+    
+    # Construir imagen
+    docker build -t $DOCKER_IMAGE .
+    
+    # Detener contenedores existentes
+    docker-compose down
+    
+    # Levantar nuevos contenedores
+    docker-compose up -d
+    
+    success "Despliegue Docker completado"
+}
+
+# Función para despliegue tradicional
+deploy_traditional() {
+    log "🖥️ Desplegando aplicación tradicional..."
+    
+    # Backup
     backup_database
     
-    # Despliegue según el entorno
-    case $ENVIRONMENT in
-        "production")
-            blue_green_deploy
-            ;;
-        "development"|"staging")
-            normal_deploy
-            ;;
-        *)
-            error "Entorno no válido: $ENVIRONMENT"
-            exit 1
-            ;;
-    esac
+    # Instalar dependencias
+    install_dependencies
     
-    # Notificar éxito
-    notify "ÉXITO" "Despliegue completado en $ENVIRONMENT"
+    # Configurar entorno
+    setup_environment
     
-    echo "=========================================="
-    success "Despliegue completado exitosamente!"
-    echo "   Entorno: $ENVIRONMENT"
-    echo "   Versión: $VERSION"
-    echo "   Imagen: $FULL_IMAGE_NAME"
-    echo "=========================================="
+    # Verificar permisos
+    check_permissions
+    
+    # Migrar base de datos
+    migrate_database
+    
+    # Ejecutar seeders
+    run_seeders
+    
+    # Optimizar aplicación
+    optimize_application
+    
+    # Health check
+    health_check
+    
+    success "Despliegue tradicional completado"
 }
 
-# Manejo de errores
-trap 'error "Error en línea $LINENO. Ejecutando rollback..."; rollback; exit 1' ERR
+# Función principal de despliegue
+main() {
+    case $ENVIRONMENT in
+        "local"|"development"|"staging"|"production")
+            log "Iniciando despliegue en entorno: $ENVIRONMENT"
+            
+            if [ "$ENVIRONMENT" = "local" ] && command -v docker &> /dev/null; then
+                deploy_docker
+            else
+                deploy_traditional
+            fi
+            
+            success "🎉 Despliegue completado exitosamente!"
+            log "🌐 La aplicación debería estar disponible en: http://localhost"
+            ;;
+        *)
+            error "Entorno no válido. Usa: local, development, staging, o production"
+            ;;
+    esac
+}
 
 # Ejecutar función principal
 main "$@" 

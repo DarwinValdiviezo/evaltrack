@@ -101,4 +101,9 @@ class EmpleadoController extends Controller
         return redirect()->route('empleados.mi-perfil')
                          ->with('success', 'Perfil actualizado correctamente.');
     }
+
+    public function show(Employee $empleado)
+    {
+        return view('empleados.show', compact('empleado'));
+    }
 }

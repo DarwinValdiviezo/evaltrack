@@ -107,14 +107,8 @@ jobs:
         export QUEUE_CONNECTION=sync
         php artisan config:cache --env=testing
         
-        # Migrar base de datos de usuarios (PostgreSQL)
-        php artisan migrate --database=pgsql --path=database/migrations/users --env=testing
-        
-        # Migrar base de datos de negocio (MySQL)
-        php artisan migrate --database=mysql_business --path=database/migrations/business --env=testing
-        
-        # Ejecutar seeders
-        php artisan db:seed --env=testing
+        # Usar comando personalizado para migrar ambas bases de datos
+        php artisan migrate:all --seed --env=testing
 
     - name: Ejecutar tests unitarios
       run: php artisan test --coverage --min=80

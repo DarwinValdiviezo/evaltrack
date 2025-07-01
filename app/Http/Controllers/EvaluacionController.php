@@ -150,4 +150,9 @@ class EvaluacionController extends Controller
         return redirect()->route('evaluaciones.index')
                          ->with('success', 'Evaluación calificada correctamente.');
     }
+
+    public function show(Evaluacion $evaluacion)
+    {
+        return view('evaluaciones.show', compact('evaluacion'));
+    }
 }
