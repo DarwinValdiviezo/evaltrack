@@ -91,6 +91,7 @@ jobs:
 
     - name: Configurar y migrar base de datos de prueba
       run: |
+        set -e
         export DB_CONNECTION=pgsql
         export DB_PGSQL_HOST=127.0.0.1
         export DB_PGSQL_PORT=5432
@@ -106,9 +107,13 @@ jobs:
         export SESSION_DRIVER=file
         export QUEUE_CONNECTION=sync
         php artisan config:cache --env=testing
-        
-        # Usar comando personalizado para migrar ambas bases de datos
-        php artisan migrate:all --seed --env=testing
+        echo "Migrando base de datos PostgreSQL (users)..."
+        php artisan migrate --database=pgsql --env=testing --force
+        echo "Migrando base de datos MySQL (business)..."
+        php artisan migrate --database=mysql --env=testing --force
+        echo "Listo. Estado de migraciones:"
+        php artisan migrate:status --database=pgsql --env=testing
+        php artisan migrate:status --database=mysql --env=testing
 
     - name: Ejecutar tests unitarios
       run: php artisan test --coverage --min=80
