@@ -55,8 +55,8 @@ Lanzamiento de la versión 1.0.0 del Sistema de Gestión de Talento Humano "Eval
 
 ### Dependencias
 **Servicios Externos:**
-- **GitHub/GitLab**: Repositorio de código fuente (`https://github.com/company/evaltrack`)
-- **Docker Hub**: Registro de imágenes (`docker.io/company/evaltrack`)
+- **GitHub/GitLab**: Repositorio de código fuente (`https://github.com/DarwinValdiviezo/evaltrack`)
+- **Docker Hub**: Registro de imágenes (`docker.io/DarwinValdiviezo/evaltrack`)
 - **SSL Certificate Authority**: Let's Encrypt para certificados HTTPS
 - **SMTP Server**: Servidor de correo para notificaciones
 
@@ -72,9 +72,9 @@ Lanzamiento de la versión 1.0.0 del Sistema de Gestión de Talento Humano "Eval
 
 ### Código/Artefacto
 - **Nombre del artefacto**: `evaltrack-web:v1.0.0`
-- **Repositorio**: `https://github.com/company/evaltrack`
+- **Repositorio**: `https://github.com/DarwinValdiviezo/evaltrack`
 - **Commit/Tag**: `v1.0.0` (commit: `a1b2c3d4e5f6`)
-- **Registro Docker**: `docker.io/company/evaltrack:1.0.0`
+- **Registro Docker**: `docker.io/DarwinValdiviezo/evaltrack:1.0.0`
 - **Tamaño estimado**: ~150MB (imagen optimizada)
 
 ### Configuraciones Críticas
@@ -183,7 +183,7 @@ PROMETHEUS_NAMESPACE=evaltrack
 3. **Staging** → Despliegue manual tras aprobación QA + tests de aceptación
 4. **Production** → Despliegue manual tras aprobación Staging + Blue/Green
 
-**Enlace al Pipeline**: `https://github.com/company/evaltrack/actions`
+**Enlace al Pipeline**: `https://github.com/DarwinValdiviezo/evaltrack/actions`
 
 ### Estrategia de Despliegue
 
