@@ -173,7 +173,85 @@ php artisan serve
 
 ---
 
-### 7.5 Diagrama del Plan de Despliegue
+### 7.5 Diagrama del Plan de Despliegue Pasos
+
+```mermaid
+flowchart TD
+    %% QA
+    subgraph QA ["QA"]
+        QA1["Checklist de preproducción"]
+        QA2["Aprobar despliegue a producción"]
+    end
+
+    %% DevOps
+    subgraph DevOps ["DevOps"]
+        D1["Preparar entorno de producción<br/>(variables, backups, notificaciones)"]
+        D2["Configurar estrategia de despliegue<br/>(Blue/Green, Rolling, etc.)"]
+        D3["Poner aplicación en modo mantenimiento"]
+        D4["Ejecutar pipeline de despliegue"]
+        D5["Desplegar artefactos<br/>(código, Docker, assets)"]
+        D6["Aplicar migraciones de base de datos"]
+        D7["Actualizar variables/configuración"]
+        D8["Reiniciar servicios"]
+        D9["Verificar logs y monitoreo<br/>en tiempo real"]
+        D10["Realizar pruebas de humo<br/>(smoke tests)"]
+        D11["Salir de modo mantenimiento"]
+        D12["Notificar a soporte y stakeholders"]
+    end
+
+    %% Soporte
+    subgraph Soporte ["Soporte"]
+        S1["Monitorear incidencias<br/>y feedback de usuarios"]
+        S2{"¿Incidencias críticas?"}
+        S3["Activar plan de rollback"]
+        S4["Continuar monitoreo"]
+    end
+
+    %% Usuario Final
+    subgraph UsuarioFinal ["Usuario Final"]
+        U1["Recibe notificación<br/>de nueva versión (opcional)"]
+        U2["Acceder a la aplicación actualizada"]
+        U3["Usar nuevas funcionalidades"]
+        U4["Reportar incidencias o feedback"]
+    end
+
+    %% Flujo principal
+    QA1 --> QA2
+    QA2 --> D1
+    D1 --> D2
+    D2 --> D3
+    D3 --> D4
+    D4 --> D5
+    D5 --> D6
+    D6 --> D7
+    D7 --> D8
+    D8 --> D9
+    D9 --> D10
+    D10 --> D11
+    D11 --> D12
+    D12 --> U1
+    U1 --> U2
+    U2 --> U3
+    U3 --> U4
+    U4 --> S1
+    S1 --> S2
+    S2 -- "Sí" --> S3
+    S2 -- "No" --> S4
+    S3 --> S4
+    S4 -.-> U2
+
+    %% Notas visuales
+    classDef qa fill:#E0EAFF,stroke:#333,stroke-width:1px;
+    classDef devops fill:#FFF5D4,stroke:#333,stroke-width:1px;
+    classDef soporte fill:#FFD4D4,stroke:#333,stroke-width:1px;
+    classDef usuario fill:#D4FFD4,stroke:#333,stroke-width:1px;
+    class QA1,QA2 qa;
+    class D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12 devops;
+    class S1,S2,S3,S4 soporte;
+    class U1,U2,U3,U4 usuario;
+```
+
+### 7.5 Diagrama del Plan de Despliegue General
 
 ```mermaid
 flowchart TD
