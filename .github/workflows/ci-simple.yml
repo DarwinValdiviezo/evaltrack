@@ -1,0 +1,196 @@
+name: CI Pipeline - EvalTrack (Simple)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # Job de pruebas
+  test:
+    name: Tests y Análisis de Código
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: evaltrack_users_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: evaltrack_business_test
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 3306:3306
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo, pdo_mysql, pdo_pgsql, gd, zip, bcmath
+        coverage: xdebug
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Crear carpetas necesarias para Laravel
+      run: |
+        mkdir -p bootstrap/cache
+        mkdir -p storage/framework/{cache,sessions,views}
+        mkdir -p storage/logs
+        chmod -R 777 bootstrap/cache storage
+
+    - name: Instalar dependencias PHP
+      run: composer install --prefer-dist --no-progress
+
+    - name: Instalar dependencias Node.js
+      run: npm ci
+
+    - name: Copiar archivo de entorno
+      run: cp .env.example .env
+
+    - name: Generar clave de aplicación
+      run: php artisan key:generate
+
+    - name: Configurar y migrar base de datos de prueba
+      run: |
+        export DB_CONNECTION=pgsql
+        export DB_PGSQL_HOST=127.0.0.1
+        export DB_PGSQL_PORT=5432
+        export DB_PGSQL_DATABASE=evaltrack_users_test
+        export DB_PGSQL_USERNAME=postgres
+        export DB_PGSQL_PASSWORD=password
+        export DB_HOST=127.0.0.1
+        export DB_PORT=3306
+        export DB_DATABASE=evaltrack_business_test
+        export DB_USERNAME=root
+        export DB_PASSWORD=root_password
+        export CACHE_DRIVER=file
+        export SESSION_DRIVER=file
+        export QUEUE_CONNECTION=sync
+        php artisan config:cache --env=testing
+        
+        # Usar comando personalizado para migrar ambas bases de datos
+        php artisan migrate:all --seed --env=testing
+
+    - name: Ejecutar tests unitarios
+      run: php artisan test --coverage --min=80
+
+    - name: Ejecutar tests de integración
+      run: php artisan test --testsuite=Feature --coverage
+
+    - name: Análisis estático de código PHP
+      run: |
+        composer require --dev phpstan/phpstan
+        ./vendor/bin/phpstan analyse app --level=8
+
+    - name: Verificar estilo de código
+      run: |
+        composer require --dev laravel/pint
+        ./vendor/bin/pint --test
+
+    - name: Verificar seguridad
+      run: |
+        composer require --dev enlightn/enlightn
+        php artisan enlightn --report
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Subir cobertura de código
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+
+  # Job de build de Docker (sin push)
+  build-docker:
+    name: Construir Imagen Docker (Local)
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Construir imagen Docker
+      run: |
+        docker build -t evaltrack:test .
+        echo "✅ Imagen Docker construida exitosamente"
+        echo "📦 Tamaño de la imagen:"
+        docker images evaltrack:test --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+
+    - name: Verificar imagen
+      run: |
+        echo "🔍 Verificando imagen Docker..."
+        docker run --rm evaltrack:test php --version
+        docker run --rm evaltrack:test composer --version
+        echo "✅ Imagen verificada correctamente"
+
+  # Job de notificación
+  notify:
+    name: Notificar Resultado
+    runs-on: ubuntu-latest
+    needs: [test, build-docker]
+    if: always()
+    
+    steps:
+    - name: Notificar éxito
+      if: success()
+      run: |
+        echo "🎉 Pipeline completado exitosamente!"
+        echo "✅ Tests pasaron"
+        echo "✅ Imagen Docker construida"
+        echo "📊 Cobertura de código disponible"
+        
+    - name: Notificar fallo
+      if: failure()
+      run: |
+        echo "❌ Pipeline falló"
+        echo "🔍 Revisa los logs para más detalles"
+        
+    - name: Resumen del workflow
+      run: |
+        echo "📋 Resumen del workflow:"
+        echo "- Tests: ${{ needs.test.result }}"
+        echo "- Build Docker: ${{ needs.build-docker.result }}"
+        echo "- Branch: ${{ github.ref_name }}"
+        echo "- Commit: ${{ github.sha }}" 
