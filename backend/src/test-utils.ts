@@ -47,6 +47,6 @@ export const mockPrismaService = {
   $disconnect: jest.fn(),
   $on: jest.fn(),
   $transaction: jest.fn(),
-} as jest.Mocked<PrismaService>;
+} as unknown as jest.Mocked<PrismaService>;
 
 export const createMockPrismaService = () => mockPrismaService; 
