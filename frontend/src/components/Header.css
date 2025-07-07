@@ -1,0 +1,249 @@
+.header {
+  background: linear-gradient(90deg, #22c55e 0%, #23272b 100%);
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 6px rgba(34,197,94,0.08);
+  padding: 1.2rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-left {
+  flex: 1;
+}
+
+.header-title {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 0.25rem;
+  letter-spacing: 1px;
+}
+
+.header-subtitle {
+  margin: 0;
+  color: #e0e0e0;
+  font-size: 1rem;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.notification-btn {
+  position: relative;
+  background: none;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 8px;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.notification-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.notification-btn i {
+  font-size: 1.25rem;
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: #ef4444;
+  color: #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.user-dropdown {
+  position: relative;
+}
+
+.user-dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: none;
+  border: none;
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.user-dropdown-btn:hover {
+  background: #22c55e22;
+}
+
+.user-avatar {
+  width: 48px;
+  height: 48px;
+  background: #22c55e;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.3rem;
+  box-shadow: 0 2px 8px rgba(34,197,94,0.12);
+}
+
+.user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.user-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.user-role {
+  color: #e0e0e0;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  background: #23272b;
+  border: 1px solid #22c55e;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(34,197,94,0.10);
+  min-width: 260px;
+  z-index: 1000;
+  margin-top: 0.5rem;
+  animation: fadeInMenu 0.25s;
+}
+@keyframes fadeInMenu {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-header {
+  padding: 1.2rem 1rem 0.7rem 1rem;
+  border-bottom: 1px solid #22c55e33;
+}
+
+.dropdown-user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.dropdown-avatar {
+  width: 54px;
+  height: 54px;
+  background: #22c55e;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.dropdown-name {
+  font-weight: 700;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.dropdown-email {
+  color: #e0e0e0;
+  font-size: 0.85rem;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #22c55e33;
+  margin: 0.5rem 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
+  padding: 0.9rem 1.2rem;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  border-radius: 8px;
+}
+
+.dropdown-item:hover {
+  background: #22c55e;
+  color: #23272b;
+}
+
+.dropdown-item.text-danger {
+  color: #dc3545;
+}
+
+.dropdown-item.text-danger:hover {
+  background: #dc3545;
+  color: #fff;
+}
+
+.dropdown-item i {
+  font-size: 1.2rem;
+}
+
+@media (max-width: 900px) {
+  .header-title {
+    font-size: 1.1rem;
+  }
+  .user-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+  }
+}
+@media (max-width: 768px) {
+  .header {
+    padding: 0.7rem 1rem;
+  }
+  .header-title {
+    font-size: 1rem;
+  }
+  .dropdown-menu {
+    min-width: 180px;
+  }
+} 

@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                Int          @id @default(autoincrement())
+  email             String       @unique
+  password          String
+  name              String
+  role              UserRole     @default(EMPLEADO)
+  isActive          Boolean      @default(true)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  attendances       Attendance[]
+  gradedEvaluations Evaluation[] @relation("EvaluationGrader")
+  evaluations       Evaluation[]
+  createdEvents     Event[]      @relation("EventCreator")
+
+  @@map("users")
+}
+
+model Event {
+  id           Int          @id @default(autoincrement())
+  title        String
+  description  String?
+  date         DateTime
+  duration     Int
+  location     String?
+  type         String?
+  maxAttendees Int?
+  status       EventStatus  @default(ACTIVE)
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  creatorId    Int
+  questions    Question[]
+  attendances  Attendance[]
+  evaluations  Evaluation[]
+  creator      User         @relation("EventCreator", fields: [creatorId], references: [id])
+
+  @@map("events")
+}
+
+model Attendance {
+  id         Int              @id @default(autoincrement())
+  eventId    Int
+  userId     Int
+  status     AttendanceStatus @default(PENDING)
+  attendedAt DateTime?
+  notes      String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  event      Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  evaluation Evaluation?
+
+  @@unique([eventId, userId])
+  @@map("attendances")
+}
+
+model Evaluation {
+  id          Int              @id @default(autoincrement())
+  eventId     Int
+  userId      Int
+  graderId    Int?
+  status      EvaluationStatus @default(PENDING)
+  score       Int?
+  feedback    String?
+  respuestas  Json?
+  submittedAt DateTime?
+  gradedAt    DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  answers     Answer[]
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  attendance  Attendance       @relation(fields: [eventId, userId], references: [eventId, userId])
+  grader      User?            @relation("EvaluationGrader", fields: [graderId], references: [id])
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+  @@map("evaluations")
+}
+
+model Question {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  answers   Answer[]
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model Answer {
+  id           Int        @id @default(autoincrement())
+  evaluationId Int
+  questionId   Int
+  response     String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  question     Question   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationId, questionId])
+}
+
+enum UserRole {
+  ADMIN
+  RECURSOS_HUMANOS
+  EMPLEADO
+}
+
+enum EventStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AttendanceStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum EvaluationStatus {
+  PENDING
+  SUBMITTED
+  GRADED
+}
