@@ -17,11 +17,15 @@ class EventoSeeder extends Seeder
      */
     public function run(): void
     {
-        // Obtener el gestor de talento humano
-        $gestor = User::where('username', 'gestor')->first();
+        // Buscar el gestor en PostgreSQL
+        $gestor = (new User())->setConnection('pgsql')->where('username', 'gestor')->first();
+        if (!$gestor) {
+            // Si no existe, usar el primer usuario
+            $gestor = (new User())->setConnection('pgsql')->first();
+        }
 
-        // Crear eventos de ejemplo
-        $evento1 = Evento::create([
+        // Crear eventos de ejemplo en MySQL
+        $evento1 = (new Evento())->setConnection('mysql')->create([
             'nombre' => 'Capacitación Power BI',
             'descripcion' => 'Aprende a crear dashboards interactivos con Power BI para análisis de datos empresariales.',
             'fecha_evento' => now()->addDays(7),
@@ -30,10 +34,10 @@ class EventoSeeder extends Seeder
             'lugar' => 'Sala de Capacitación A',
             'tipo' => 'Capacitación',
             'estado' => 'Programado',
-            'creado_por' => $gestor->id,
+            'creado_por' => $gestor ? $gestor->id : null,
         ]);
 
-        $evento2 = Evento::create([
+        $evento2 = (new Evento())->setConnection('mysql')->create([
             'nombre' => 'Taller de Comunicación Efectiva',
             'descripcion' => 'Mejora tus habilidades de comunicación interpersonal y presentación en público.',
             'fecha_evento' => now()->addDays(14),
@@ -42,10 +46,10 @@ class EventoSeeder extends Seeder
             'lugar' => 'Auditorio Principal',
             'tipo' => 'Taller',
             'estado' => 'Programado',
-            'creado_por' => $gestor->id,
+            'creado_por' => $gestor ? $gestor->id : null,
         ]);
 
-        $evento3 = Evento::create([
+        $evento3 = (new Evento())->setConnection('mysql')->create([
             'nombre' => 'Reunión de Seguridad Informática',
             'descripcion' => 'Actualización sobre políticas de seguridad y mejores prácticas para proteger información empresarial.',
             'fecha_evento' => now()->addDays(3),
@@ -54,15 +58,15 @@ class EventoSeeder extends Seeder
             'lugar' => 'Sala de Conferencias B',
             'tipo' => 'Reunión',
             'estado' => 'Programado',
-            'creado_por' => $gestor->id,
+            'creado_por' => $gestor ? $gestor->id : null,
         ]);
 
-        // Obtener empleados
-        $empleados = Employee::whereNotNull('user_id')->get();
+        // Obtener empleados de MySQL
+        $empleados = (new Employee())->setConnection('mysql')->whereNotNull('user_id')->get();
 
         // Crear asistencias para el evento 1
         foreach ($empleados as $empleado) {
-            Asistencia::create([
+            (new Asistencia())->setConnection('mysql')->create([
                 'evento_id' => $evento1->id,
                 'empleado_id' => $empleado->id,
                 'fecha_asistencia' => $evento1->fecha_evento,
@@ -74,7 +78,7 @@ class EventoSeeder extends Seeder
 
         // Crear asistencias para el evento 2
         foreach ($empleados as $empleado) {
-            Asistencia::create([
+            (new Asistencia())->setConnection('mysql')->create([
                 'evento_id' => $evento2->id,
                 'empleado_id' => $empleado->id,
                 'fecha_asistencia' => $evento2->fecha_evento,
@@ -86,7 +90,7 @@ class EventoSeeder extends Seeder
 
         // Crear evaluaciones para el evento 1 (solo para capacitaciones)
         foreach ($empleados as $empleado) {
-            Evaluacion::create([
+            (new Evaluacion())->setConnection('mysql')->create([
                 'evento_id' => $evento1->id,
                 'empleado_id' => $empleado->id,
                 'status' => 'Pendiente',

@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; // Added DB facade
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\EmpleadoController;
 use App\Http\Controllers\AsistenciaController;
@@ -114,3 +115,46 @@ Route::get('evaluaciones/{evaluacion}/calificar', [EvaluacionController::class, 
      ->name('evaluaciones.calificar');
 Route::post('evaluaciones/{evaluacion}/guardar-calificacion', [EvaluacionController::class, 'guardarCalificacion'])
      ->name('evaluaciones.guardar-calificacion');
+
+// Health check endpoint para monitoreo
+Route::get('/health', function () {
+    try {
+        $postgresql_status = 'connected';
+        $mysql_status = 'connected';
+        
+        // Verificar PostgreSQL
+        try {
+            DB::connection('pgsql')->getPdo();
+        } catch (Exception $e) {
+            $postgresql_status = 'error';
+        }
+        
+        // Verificar MySQL
+        try {
+            DB::connection('mysql_business')->getPdo();
+        } catch (Exception $e) {
+            $mysql_status = 'error';
+        }
+        
+        return response()->json([
+            'status' => 'healthy',
+            'timestamp' => now()->toISOString(),
+            'version' => '1.0.0',
+            'environment' => config('app.env'),
+            'database' => [
+                'postgresql' => $postgresql_status,
+                'mysql' => $mysql_status
+            ],
+            'services' => [
+                'cache' => 'available',
+                'queue' => 'available'
+            ]
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'status' => 'unhealthy',
+            'timestamp' => now()->toISOString(),
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});

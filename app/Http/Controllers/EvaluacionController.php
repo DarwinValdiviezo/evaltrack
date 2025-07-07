@@ -91,8 +91,15 @@ class EvaluacionController extends Controller
         }
         
         $evaluaciones = $empleado->evaluaciones()
-                                 ->orderBy('fecha_evaluacion','desc')
-                                 ->paginate(10);
+            ->whereHas('evento', function($q) {
+                $q->where('estado', 'Activo');
+            })
+            ->whereHas('evento.asistencias', function($q) use ($empleado) {
+                $q->where('empleado_id', $empleado->id)
+                  ->where('status', 'Confirmada');
+            })
+            ->orderBy('fecha_evaluacion','desc')
+            ->paginate(10);
 
         return view('evaluaciones.mis', compact('evaluaciones'));
     }

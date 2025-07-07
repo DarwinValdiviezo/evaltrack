@@ -10,6 +10,8 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasRoles;
 
+    protected $connection = 'pgsql';
+
     protected $table = 'users';
 
     protected $fillable = [

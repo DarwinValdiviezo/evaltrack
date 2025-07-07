@@ -3,19 +3,23 @@
 ## 1. Objetivo y Alcance
 
 ### Propósito
-Lanzamiento de la versión 1.0.0 del Sistema de Gestión de Talento Humano "EvalTrack" - Plataforma web integral para la administración completa de empleados, eventos corporativos, control de asistencias y sistema de evaluaciones post-evento.
+Lanzamiento de la versión 1.0.0 del Sistema de Gestión de Talento Humano "EvalTrack" — Plataforma web integral para la administración completa de empleados, eventos corporativos, control de asistencias y sistema de evaluaciones post-evento.
 
 ### Ámbito
-**Componentes a desplegar:**
-- **Aplicación Web**: Laravel 12.0 (PHP 8.2+) con arquitectura MVC
-- **Base de Datos PostgreSQL**: Gestión de usuarios, roles y permisos (Spatie Laravel Permission)
-- **Base de Datos MySQL**: Datos de negocio (empleados, eventos, asistencias, evaluaciones)
-- **Servidor Web**: Nginx 1.24+ con PHP-FPM 8.2
-- **Cache y Sesiones**: Redis 7.0+
-- **Sistema de Archivos**: Storage para logs, uploads y cache de Laravel
-- **Frontend**: Bootstrap 4.6.2 + SB Admin 2 con Vite para assets
 
-**Arquitectura del Sistema:**
+**Componentes a desplegar:**
+- **Aplicación Web:** Laravel 12.0 (PHP 8.2+) con arquitectura MVC.
+- **Base de Datos PostgreSQL:** Gestión de usuarios, roles y permisos (Spatie Laravel Permission).
+- **Base de Datos MySQL:** Datos de negocio (empleados, eventos, asistencias, evaluaciones).
+- **Servidor Web:** Nginx 1.24+ con PHP-FPM 8.2.
+- **Cache y Sesiones:** Redis 7.0+ (opcional, para producción).
+- **Sistema de Archivos:** Storage para logs, uploads y cache de Laravel.
+- **Frontend:** Bootstrap 4.6.2 + SB Admin 2 con Vite para assets.
+
+---
+
+## 2. Arquitectura del Sistema
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Load Balancer (Nginx)                    │
@@ -55,8 +59,8 @@ Lanzamiento de la versión 1.0.0 del Sistema de Gestión de Talento Humano "Eval
 
 ### Dependencias
 **Servicios Externos:**
-- **GitHub/GitLab**: Repositorio de código fuente (`https://github.com/DarwinValdiviezo/evaltrack`)
-- **Docker Hub**: Registro de imágenes (`docker.io/DarwinValdiviezo/evaltrack`)
+- **GitHub/GitLab**: Repositorio de código fuente (`https://github.com/company/evaltrack`)
+- **Docker Hub**: Registro de imágenes (`docker.io/company/evaltrack`)
 - **SSL Certificate Authority**: Let's Encrypt para certificados HTTPS
 - **SMTP Server**: Servidor de correo para notificaciones
 
@@ -72,9 +76,9 @@ Lanzamiento de la versión 1.0.0 del Sistema de Gestión de Talento Humano "Eval
 
 ### Código/Artefacto
 - **Nombre del artefacto**: `evaltrack-web:v1.0.0`
-- **Repositorio**: `https://github.com/DarwinValdiviezo/evaltrack`
+- **Repositorio**: `https://github.com/company/evaltrack`
 - **Commit/Tag**: `v1.0.0` (commit: `a1b2c3d4e5f6`)
-- **Registro Docker**: `docker.io/DarwinValdiviezo/evaltrack:1.0.0`
+- **Registro Docker**: `docker.io/company/evaltrack:1.0.0`
 - **Tamaño estimado**: ~150MB (imagen optimizada)
 
 ### Configuraciones Críticas
@@ -183,7 +187,7 @@ PROMETHEUS_NAMESPACE=evaltrack
 3. **Staging** → Despliegue manual tras aprobación QA + tests de aceptación
 4. **Production** → Despliegue manual tras aprobación Staging + Blue/Green
 
-**Enlace al Pipeline**: `https://github.com/DarwinValdiviezo/evaltrack/actions`
+**Enlace al Pipeline**: `https://github.com/company/evaltrack/actions`
 
 ### Estrategia de Despliegue
 
@@ -626,24 +630,22 @@ kubectl exec -it deployment/evaltrack-web -n evaltrack-prod -- php artisan tinke
 # Probar conexión: DB::connection()->getPdo();
 ```
 
-**2. Problemas de permisos:**
-```bash
-# Verificar permisos de storage
-kubectl exec -it deployment/evaltrack-web -n evaltrack-prod -- chown -R www-data:www-data storage/
-```
+8. **Iniciar el servidor**
+   ```bash
+   php artisan serve
+   ```
 
-**3. Problemas de cache:**
-```bash
-# Limpiar cache
-kubectl exec -it deployment/evaltrack-web -n evaltrack-prod -- php artisan cache:clear
-kubectl exec -it deployment/evaltrack-web -n evaltrack-prod -- php artisan config:clear
-```
+9. **Acceder a la aplicación**
+   - [http://localhost:8000](http://localhost:8000)
 
-### Logs Importantes
-- **Aplicación**: `storage/logs/laravel.log`
-- **Nginx**: `/var/log/nginx/error.log`
-- **PHP-FPM**: `/var/log/php-fpm.log`
-- **Kubernetes**: `kubectl logs deployment/evaltrack-web -n evaltrack-prod`
+---
+
+## 6. Buenas Prácticas
+
+- Mantén tus variables de entorno y secrets fuera del control de versiones.
+- Realiza backups periódicos de ambas bases de datos.
+- Utiliza `php artisan config:clear` y `php artisan cache:clear` tras cambios en configuración.
+- Consulta la documentación oficial en el repositorio para detalles avanzados.
 
 ---
 

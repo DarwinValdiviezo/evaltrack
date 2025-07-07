@@ -11,19 +11,22 @@ class UserEmpleadoSyncSeeder extends Seeder
 {
     public function run()
     {
-        $users = User::all();
+        // Leer usuarios desde PostgreSQL
+        $users = (new User())->setConnection('pgsql')->get();
         foreach ($users as $user) {
-            $exists = Employee::where('email', $user->email)->first();
+            // Crear empleados en MySQL
+            $exists = (new Employee())->setConnection('mysql')->where('email', $user->email)->first();
             if (!$exists) {
-                Employee::create([
+                (new Employee())->setConnection('mysql')->create([
                     'user_id' => $user->id,
-                    'nombre' => Str::before($user->email, '@'),
-                    'apellido' => 'Empleado',
-                    'cedula' => 'EMP' . str_pad($user->id, 6, '0', STR_PAD_LEFT),
+                    'nombre' => $user->nombre ?? Str::before($user->email, '@'),
+                    'apellido' => $user->apellido ?? 'Empleado',
+                    'cedula' => $user->cedula ?? ('EMP' . str_pad($user->id, 6, '0', STR_PAD_LEFT)),
                     'email' => $user->email,
-                    'telefono' => null,
-                    'fecha_nacimiento' => '1990-01-01',
-                    'cargo' => 'Empleado',
+                    'telefono' => $user->telefono ?? null,
+                    'fecha_nacimiento' => $user->fecha_nacimiento ?? '1990-01-01',
+                    'cargo' => $user->cargo ?? 'Empleado',
+                    'estado' => 'activo',
                 ]);
             }
         }
