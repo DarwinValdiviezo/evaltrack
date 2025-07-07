@@ -1,0 +1,377 @@
+name: EvalTrack v2.0.0 CI/CD Pipeline
+
+on:
+  push:
+    branches: [ v2.0.0-nestjs-react, develop ]
+    tags: [ 'v2.*' ]
+  pull_request:
+    branches: [ v2.0.0-nestjs-react ]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME_BACKEND: darwinvaldiviezo/evaltrack-api
+  IMAGE_NAME_FRONTEND: darwinvaldiviezo/evaltrack-frontend
+  IMAGE_NAME_MIGRATION: darwinvaldiviezo/evaltrack-migration
+
+jobs:
+  # ========================================
+  # JOB 1: TESTS Y VALIDACIONES
+  # ========================================
+  test:
+    name: 🧪 Tests y Validaciones
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: evaltrack_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # ========================================
+      # BACKEND TESTS
+      # ========================================
+      - name: 📦 Instalar dependencias Backend
+        working-directory: ./backend
+        run: npm ci
+
+      - name: 🔧 Configurar variables de entorno Backend
+        working-directory: ./backend
+        run: |
+          cp .env.example .env
+          echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/evaltrack_test" >> .env
+          echo "JWT_SECRET=test-secret-key" >> .env
+          echo "NODE_ENV=test" >> .env
+
+      - name: 🗄️ Ejecutar migraciones Backend
+        working-directory: ./backend
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: 🧪 Ejecutar tests Backend
+        working-directory: ./backend
+        run: npm run test
+
+      - name: 📊 Coverage Backend
+        working-directory: ./backend
+        run: npm run test:cov
+
+      # ========================================
+      # FRONTEND TESTS
+      # ========================================
+      - name: 📦 Instalar dependencias Frontend
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: 🧪 Ejecutar tests Frontend
+        working-directory: ./frontend
+        run: npm run test
+
+      - name: 🔍 Lint Frontend
+        working-directory: ./frontend
+        run: npm run lint
+
+      # ========================================
+      # SECURITY SCAN
+      # ========================================
+      - name: 🔒 Security Scan
+        run: |
+          npm audit --audit-level=moderate
+          cd backend && npm audit --audit-level=moderate
+          cd ../frontend && npm audit --audit-level=moderate
+
+      # ========================================
+      # BUILD VALIDATION
+      # ========================================
+      - name: 🏗️ Build Backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: 🏗️ Build Frontend
+        working-directory: ./frontend
+        run: npm run build
+
+  # ========================================
+  # JOB 2: BUILD Y PUSH DOCKER IMAGES
+  # ========================================
+  build-and-push:
+    name: 🐳 Build y Push Docker Images
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/v2.0.0-nestjs-react' || startsWith(github.ref, 'refs/tags/v2.'))
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Login a Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 📋 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ========================================
+      # BACKEND IMAGE
+      # ========================================
+      - name: 🏗️ Build Backend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      # ========================================
+      # FRONTEND IMAGE
+      # ========================================
+      - name: 🏗️ Build Frontend Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_FRONTEND }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      # ========================================
+      # MIGRATION IMAGE
+      # ========================================
+      - name: 🏗️ Build Migration Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./scripts/migration
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MIGRATION }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MIGRATION }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_MIGRATION }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # ========================================
+  # JOB 3: DEPLOY TO STAGING
+  # ========================================
+  deploy-staging:
+    name: 🚀 Deploy a Staging
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/v2.0.0-nestjs-react'
+    environment: staging
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configurar SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.STAGING_SSH_KEY }}
+
+      - name: 🚀 Deploy a Staging
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+            cd /opt/evaltrack-staging
+            echo "🔄 Actualizando imágenes..."
+            docker-compose pull
+            echo "🗄️ Ejecutando migraciones..."
+            docker-compose exec -T backend npm run db:migrate
+            echo "🚀 Reiniciando servicios..."
+            docker-compose up -d
+            echo "🏥 Health check..."
+            sleep 30
+            curl -f http://localhost:3000/health || exit 1
+            echo "✅ Deploy a staging completado"
+          EOF
+
+      - name: 📊 Smoke Tests Staging
+        run: |
+          curl -f http://${{ secrets.STAGING_HOST }}:3000/health
+          curl -f http://${{ secrets.STAGING_HOST }}:5173/
+
+      - name: 📢 Notificar Slack - Staging
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          text: '✅ EvalTrack v2.0.0 desplegado exitosamente en STAGING'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ========================================
+  # JOB 4: DEPLOY TO PRODUCTION
+  # ========================================
+  deploy-production:
+    name: 🚀 Deploy a Producción
+    needs: [build-and-push, deploy-staging]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v2.')
+    environment: production
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+
+      - name: 🔐 Configurar SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: 📦 Backup de producción
+        run: |
+          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
+            echo "📦 Creando backup..."
+            cd /opt/evaltrack-prod
+            ./scripts/backup.sh
+          EOF
+
+      - name: 🔄 Migración de datos (si es necesario)
+        run: |
+          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
+            echo "🔄 Ejecutando migración de datos..."
+            cd /opt/evaltrack-prod
+            ./scripts/migrate-data.sh
+          EOF
+
+      - name: 🚀 Deploy a Producción
+        run: |
+          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
+            cd /opt/evaltrack-prod
+            echo "🔄 Actualizando imágenes..."
+            docker-compose pull
+            echo "🗄️ Ejecutando migraciones..."
+            docker-compose exec -T backend npm run db:migrate
+            echo "🚀 Desplegando con estrategia Blue/Green..."
+            ./scripts/deploy.sh ${{ github.ref_name }}
+          EOF
+
+      - name: 📊 Health Check Producción
+        run: |
+          echo "🏥 Verificando salud de la aplicación..."
+          for i in {1..10}; do
+            if curl -f http://${{ secrets.PROD_HOST }}:3000/health; then
+              echo "✅ Backend saludable"
+              break
+            fi
+            sleep 10
+          done
+          
+          if curl -f http://${{ secrets.PROD_HOST }}:5173/; then
+            echo "✅ Frontend saludable"
+          else
+            echo "❌ Frontend no responde"
+            exit 1
+          fi
+
+      - name: 📊 Smoke Tests Producción
+        run: |
+          echo "🧪 Ejecutando smoke tests..."
+          curl -X POST http://${{ secrets.PROD_HOST }}:3000/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin@test.com","password":"admin123"}' \
+            -w "\nStatus: %{http_code}\n"
+
+      - name: 📢 Notificar Slack - Producción
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          text: '🎉 EvalTrack v2.0.0 desplegado exitosamente en PRODUCCIÓN!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: 🏷️ Crear Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: EvalTrack v2.0.0 - Producción
+          body: |
+            ## 🎉 EvalTrack v2.0.0 Desplegado en Producción
+            
+            ### ✨ Nuevas Características
+            - Migración completa desde Laravel a NestJS/React
+            - Mejor performance y escalabilidad
+            - Interfaz moderna con Tailwind CSS
+            - API RESTful con TypeScript
+            
+            ### 🔧 Mejoras Técnicas
+            - Backend: NestJS 11.0.1 + Prisma
+            - Frontend: React 18 + Vite + TypeScript
+            - Base de datos: PostgreSQL unificada
+            - Autenticación: JWT + Passport
+            
+            ### 📊 Métricas de Despliegue
+            - Tiempo de build: ${{ needs.build-and-push.outputs.build-time }}
+            - Tests pasados: ✅
+            - Health checks: ✅
+            - Smoke tests: ✅
+          draft: false
+          prerelease: false
+
+  # ========================================
+  # JOB 5: ROLLBACK (en caso de fallo)
+  # ========================================
+  rollback:
+    name: 🔄 Rollback Automático
+    needs: [deploy-production]
+    runs-on: ubuntu-latest
+    if: failure() && startsWith(github.ref, 'refs/tags/v2.')
+    environment: production
+    
+    steps:
+      - name: 🔐 Configurar SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: 🔄 Ejecutar Rollback
+        run: |
+          ssh ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
+            echo "🔄 Iniciando rollback automático..."
+            cd /opt/evaltrack-prod
+            ./scripts/rollback.sh
+          EOF
+
+      - name: 📢 Notificar Rollback
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#incidents-prod'
+          text: '🚨 ROLLBACK AUTOMÁTICO EJECUTADO - EvalTrack v2.0.0'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 

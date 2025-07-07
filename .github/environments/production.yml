@@ -1,0 +1,17 @@
+name: production
+url: https://evaltrack.com
+
+protection_rules:
+  - required_reviewers:
+      required_approving_review_count: 2
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: true
+  - wait_timer:
+      wait_time: 10
+  - required_status_checks:
+      strict: true
+      contexts:
+        - test
+        - build-and-push
+        - deploy-staging
+        - deploy-production 
