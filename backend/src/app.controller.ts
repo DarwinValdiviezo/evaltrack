@@ -3,7 +3,7 @@ import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { Roles } from './auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 @Controller()
 export class AppController {
@@ -64,7 +64,7 @@ export class AppController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(UserRole.ADMIN)
   @Get('admin/status')
   getAdminStatus(@Request() req) {
     return {
