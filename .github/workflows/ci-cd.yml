@@ -226,12 +226,13 @@ jobs:
           echo "Todos los smoke tests pasaron"
 
       - name: Notificar Slack - Staging
-        run: |
-          echo "Notificación Slack - Staging"
-          echo "Mensaje: EvalTrack v2.0.0 desplegado exitosamente en STAGING"
-          echo "Canal: #deployments"
-          echo "Estado: Success"
-          echo "Notificación enviada (webhook configurado)"
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#general-espe'
+          text: 'EvalTrack v2.0.0 desplegado exitosamente en STAGING'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # ========================================
   # JOB 4: DEPLOY TO PRODUCTION
@@ -292,12 +293,13 @@ jobs:
           echo "✅ Todos los smoke tests pasaron"
 
       - name: Notificar Slack - Producción
-        run: |
-          echo "Notificación Slack - Producción"
-          echo "Mensaje: EvalTrack v2.0.0 desplegado exitosamente en PRODUCCIÓN!"
-          echo "Canal: #deployments"
-          echo "Estado: Success"
-          echo "Notificación enviada (webhook configurado)"
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#general-espe'
+          text: 'EvalTrack v2.0.0 desplegado exitosamente en PRODUCCIÓN!'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: 🏷️ Simular Crear Release
         run: |
@@ -329,9 +331,10 @@ jobs:
           echo "✅ Rollback completado exitosamente"
 
       - name: Notificar Rollback
-        run: |
-          echo "Notificación Slack - Rollback"
-          echo "Mensaje: ROLLBACK AUTOMÁTICO EJECUTADO - EvalTrack v2.0.0"
-          echo "Canal: #incidents-prod"
-          echo "Estado: Failure"
-          echo "Notificación enviada (webhook configurado)" 
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#general-espe'
+          text: 'ROLLBACK AUTOMÁTICO EJECUTADO - EvalTrack v2.0.0'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }} 
