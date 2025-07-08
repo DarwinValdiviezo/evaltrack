@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # ========================================
+  # POSTGRESQL DATABASE
+  # ========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: evaltrack-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: evaltrack_dev
+      POSTGRES_USER: evaltrack_user
+      POSTGRES_PASSWORD: password123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/backup:/backups
+    ports:
+      - "5432:5432"
+    networks:
+      - evaltrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evaltrack_user"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # REDIS CACHE
+  # ========================================
+  redis:
+    image: redis:7-alpine
+    container_name: evaltrack-redis-dev
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - evaltrack-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # BACKEND API (NestJS)
+  # ========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: builder
+    container_name: evaltrack-backend-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://evaltrack_user:password123@postgres:5432/evaltrack_dev
+      JWT_SECRET: dev-jwt-secret-key
+      JWT_EXPIRES_IN: 24h
+      REDIS_URL: redis://redis:6379
+      PORT: 3000
+      LOG_LEVEL: debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - evaltrack-network
+    command: npm run start:dev
+
+  # ========================================
+  # FRONTEND (React)
+  # ========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: builder
+    container_name: evaltrack-frontend-dev
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:3000
+      VITE_APP_NAME: EvalTrack v2.0 (Dev)
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - evaltrack-network
+    command: npm run dev -- --host 0.0.0.0
+
+  # ========================================
+  # PRISMA STUDIO (Opcional)
+  # ========================================
+  prisma-studio:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: builder
+    container_name: evaltrack-prisma-studio
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://evaltrack_user:password123@postgres:5432/evaltrack_dev
+    ports:
+      - "5555:5555"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - evaltrack-network
+    command: npx prisma studio --hostname 0.0.0.0 --port 5555
+
+# ========================================
+# VOLUMES
+# ========================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  evaltrack-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16 

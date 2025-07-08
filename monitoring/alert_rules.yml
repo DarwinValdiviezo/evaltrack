@@ -1,150 +1,65 @@
 groups:
-  - name: evaltrack-alerts
+  - name: evaltrack_alerts
     rules:
-      # ========================================
-      # BACKEND ALERTS
-      # ========================================
-      - alert: BackendDown
-        expr: up{job="evaltrack-backend"} == 0
-        for: 1m
-        labels:
-          severity: critical
-          service: backend
-        annotations:
-          summary: "Backend API is down"
-          description: "EvalTrack backend API has been down for more than 1 minute"
-
-      - alert: BackendHighErrorRate
-        expr: rate(http_requests_total{job="evaltrack-backend", status=~"5.."}[5m]) > 0.05
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
         for: 2m
         labels:
           severity: warning
-          service: backend
         annotations:
-          summary: "High error rate on backend API"
+          summary: "High error rate detected"
           description: "Error rate is {{ $value }} errors per second"
 
-      - alert: BackendHighLatency
-        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="evaltrack-backend"}[5m])) > 2
-        for: 5m
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 2m
         labels:
           severity: warning
-          service: backend
         annotations:
-          summary: "High latency on backend API"
-          description: "95th percentile latency is {{ $value }} seconds"
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }} seconds"
 
-      # ========================================
-      # FRONTEND ALERTS
-      # ========================================
-      - alert: FrontendDown
-        expr: up{job="evaltrack-frontend"} == 0
-        for: 1m
-        labels:
-          severity: critical
-          service: frontend
-        annotations:
-          summary: "Frontend is down"
-          description: "EvalTrack frontend has been down for more than 1 minute"
-
-      # ========================================
-      # DATABASE ALERTS
-      # ========================================
-      - alert: DatabaseDown
-        expr: up{job="postgres"} == 0
-        for: 1m
-        labels:
-          severity: critical
-          service: database
-        annotations:
-          summary: "PostgreSQL database is down"
-          description: "Database has been down for more than 1 minute"
-
-      - alert: DatabaseHighConnections
+      - alert: DatabaseConnectionHigh
         expr: pg_stat_database_numbackends > 80
-        for: 5m
+        for: 1m
         labels:
           severity: warning
-          service: database
         annotations:
-          summary: "High number of database connections"
+          summary: "High database connections"
           description: "Database has {{ $value }} active connections"
 
-      # ========================================
-      # REDIS ALERTS
-      # ========================================
-      - alert: RedisDown
-        expr: up{job="redis"} == 0
+      - alert: MemoryUsageHigh
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is {{ $value | humanizePercentage }} available"
+
+      - alert: ServiceDown
+        expr: up == 0
         for: 1m
         labels:
           severity: critical
-          service: redis
         annotations:
-          summary: "Redis cache is down"
-          description: "Redis has been down for more than 1 minute"
+          summary: "Service is down"
+          description: "Service {{ $labels.job }} is down"
 
-      - alert: RedisHighMemory
-        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
-        for: 5m
+      - alert: CanaryDeploymentFailed
+        expr: canary_error_rate > 0.05
+        for: 2m
         labels:
-          severity: warning
-          service: redis
+          severity: critical
         annotations:
-          summary: "Redis memory usage is high"
-          description: "Redis is using {{ $value | humanizePercentage }} of available memory"
-
-      # ========================================
-      # SYSTEM ALERTS
-      # ========================================
-      - alert: HighCPUUsage
-        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "High CPU usage"
-          description: "CPU usage is {{ $value }}%"
-
-      - alert: HighMemoryUsage
-        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 85
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "High memory usage"
-          description: "Memory usage is {{ $value }}%"
-
-      - alert: HighDiskUsage
-        expr: (node_filesystem_size_bytes - node_filesystem_free_bytes) / node_filesystem_size_bytes * 100 > 85
-        for: 5m
-        labels:
-          severity: warning
-          service: system
-        annotations:
-          summary: "High disk usage"
-          description: "Disk usage is {{ $value }}%"
-
-      # ========================================
-      # BUSINESS ALERTS
-      # ========================================
-      - alert: LowUserActivity
-        expr: rate(http_requests_total{job="evaltrack-backend", endpoint="/api/users"}[1h]) < 1
-        for: 30m
-        labels:
-          severity: info
-          service: business
-        annotations:
-          summary: "Low user activity detected"
-          description: "User activity is below normal levels"
-
-      - alert: HighLoginFailures
-        expr: rate(http_requests_total{job="evaltrack-backend", endpoint="/api/auth/login", status="401"}[5m]) > 0.1
-        for: 5m
-        labels:
-          severity: warning
-          service: security
-        annotations:
-          summary: "High number of login failures"
-          description: "Possible brute force attack or credential issues" 
+          summary: "Canary deployment failing"
+          description: "Canary deployment has {{ $value | humanizePercentage }} error rate" 

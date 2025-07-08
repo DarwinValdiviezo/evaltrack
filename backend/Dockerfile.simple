@@ -1,0 +1,28 @@
+# ========================================
+# EVALTRACK v2.0.0 - SIMPLE BACKEND DOCKERFILE
+# ========================================
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copiar todo
+COPY . .
+
+# Instalar dependencias
+RUN npm ci
+
+# Generar Prisma Client
+RUN npx prisma generate
+
+# Compilar TypeScript directamente
+RUN npx tsc
+
+# Mostrar qué se generó
+RUN ls -la dist/
+
+# Exponer puerto
+EXPOSE 3000
+
+# Comando de inicio
+CMD ["node", "dist/main.js"] 

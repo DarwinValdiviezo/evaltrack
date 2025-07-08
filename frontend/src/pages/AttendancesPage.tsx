@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { attendanceService, userService, eventService } from '../lib/api';
+import { attendanceService, eventService } from '../lib/api';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import './AttendancesPage.css';
 import { useAuth } from '../contexts/AuthContext';
-import dayjs from 'dayjs';
 
 const AttendancesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -131,23 +130,6 @@ const AttendancesPage: React.FC = () => {
     { value: 'CONFIRMED', label: 'Confirmada' },
     { value: 'CANCELLED', label: 'Cancelada' },
   ];
-
-  // Formatear fecha y hora
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-  };
-  const formatTime = (dateString: string) => {
-    if (!dateString) return '-';
-    return new Date(dateString).toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   // Modal de eliminar
   const handleDeleteClick = (attendance: any) => {

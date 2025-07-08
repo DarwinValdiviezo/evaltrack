@@ -3,24 +3,24 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   RECURSOS_HUMANOS = 'RECURSOS_HUMANOS',
-  EMPLEADO = 'EMPLEADO',
+  EMPLEADO = 'EMPLEADO'
 }
 
 export enum EventStatus {
   ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
+  INACTIVE = 'INACTIVE'
 }
 
 export enum AttendanceStatus {
   PENDING = 'PENDING',
   CONFIRMED = 'CONFIRMED',
-  CANCELLED = 'CANCELLED',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum EvaluationStatus {
   PENDING = 'PENDING',
   SUBMITTED = 'SUBMITTED',
-  GRADED = 'GRADED',
+  GRADED = 'GRADED'
 }
 
 export interface User {

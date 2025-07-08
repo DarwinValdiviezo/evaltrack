@@ -1,39 +1,11 @@
 # ========================================
-# DOCKERFILE PARA PRODUCCIÓN - API NestJS
+# EVALTRACK v2.0.0 - BACKEND DOCKERFILE
 # ========================================
 
-# Etapa de construcción
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
-# Instalar dependencias del sistema
-RUN apk add --no-cache libc6-compat
-
-# Establecer directorio de trabajo
-WORKDIR /app
-
-# Copiar archivos de dependencias
-COPY package*.json ./
-COPY prisma ./prisma/
-
-# Instalar dependencias
-RUN npm ci --only=production && npm cache clean --force
-
-# Generar cliente Prisma
-RUN npx prisma generate
-
-# Copiar código fuente
-COPY . .
-
-# Construir la aplicación
-RUN npm run build
-
-# ========================================
-# Etapa de producción
-# ========================================
-FROM node:18-alpine AS production
-
-# Instalar dependencias del sistema
-RUN apk add --no-cache dumb-init curl
+# Instalar dumb-init
+RUN apk add --no-cache dumb-init
 
 # Crear usuario no-root
 RUN addgroup -g 1001 -S nodejs
@@ -44,18 +16,24 @@ WORKDIR /app
 
 # Copiar archivos de dependencias
 COPY package*.json ./
+COPY prisma ./prisma/
 
-# Instalar solo dependencias de producción
-RUN npm ci --only=production && npm cache clean --force
+# Instalar dependencias
+RUN npm ci
 
-# Copiar cliente Prisma generado
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/prisma ./prisma
+# Generar Prisma Client
+RUN npx prisma generate
 
-# Copiar código construido
-COPY --from=builder /app/dist ./dist
+# Copiar código fuente
+COPY . .
 
-# Cambiar propietario de archivos
+# Build de la aplicación usando tsconfig.build.json explícitamente
+RUN npx tsc -p tsconfig.build.json
+
+# Mostrar archivos generados para debug
+RUN ls -lR dist
+
+# Cambiar propietario
 RUN chown -R nestjs:nodejs /app
 
 # Cambiar al usuario no-root
@@ -64,10 +42,6 @@ USER nestjs
 # Exponer puerto
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
-
 # Comando de inicio
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/main"] 
+CMD ["node", "dist/main.js"] 

@@ -1,0 +1,12 @@
+# ========================================
+# EVALTRACK v2.0.0 - MIGRATION DOCKERFILE
+# ========================================
+
+# Usar la imagen del backend como base
+FROM darwinvaldiviezo/evaltrack-api:latest
+
+# Cambiar al usuario root para ejecutar migraciones
+USER root
+
+# Comando para ejecutar migraciones
+CMD ["npx", "prisma", "migrate", "deploy"] 
