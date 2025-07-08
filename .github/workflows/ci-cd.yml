@@ -1,4 +1,4 @@
-# Cambio mínimo para forzar ejecución del pipeline y probar notificación Slack
+# Probando nuevo webhook de Slack actualizado
 name: EvalTrack v2.0.0 CI/CD Pipeline
 
 on:
